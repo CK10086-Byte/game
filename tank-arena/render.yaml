@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pixel-tank-arena
+    runtime: python
+    rootDir: tank-arena
+    plan: free
+    region: singapore
+    buildCommand: python3 -m py_compile server.py tank_engine.py gomoku_engine.py
+    startCommand: python3 -B server.py --bind 0.0.0.0 --tank-only
+    healthCheckPath: /healthz

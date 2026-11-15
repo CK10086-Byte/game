@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>游戏介绍 · 像素工坊</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/game.css">
+  <script src="/game-examples.js" defer></script>
+  <script src="/game.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap top-inner">
+      <a class="brand" href="/" aria-label="像素工坊首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>像素工坊</a>
+      <a class="top-cta" href="/#gallery">作品广场</a>
+    </div>
+  </header>
+  <main class="wrap game-detail">
+    <a class="game-back" href="/#gallery">← 返回作品广场</a>
+    <article class="game-intro" aria-labelledby="game-title">
+      <h1 id="game-title">游戏介绍</h1>
+      <p id="game-description" class="game-description" hidden></p>
+      <p id="game-status" role="status">正在加载游戏介绍…</p>
+      <a id="start-game" class="button primary" hidden>开始游戏 →</a>
+      <section id="game-instructions" aria-labelledby="instructions-title" hidden>
+        <h2 id="instructions-title">怎么玩</h2>
+        <ul id="instructions-list"></ul>
+      </section>
+    </article>
+  </main>
+</body>
+</html>
