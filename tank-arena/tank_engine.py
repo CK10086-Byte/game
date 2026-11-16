@@ -87,7 +87,7 @@ class Room:
     players: dict = field(default_factory=dict)
     bullets: list = field(default_factory=list)
     pickups: list = field(default_factory=list)
-    events: deque = field(default_factory=lambda: deque(maxlen=24))
+    events: deque = field(default_factory=lambda: deque(maxlen=64))
     phase: str = "lobby"
     countdown_until: float = 0.0
     finish_at: float = 0.0
@@ -100,8 +100,9 @@ class Room:
         self.object_id += 1
         return self.object_id
 
-    def event(self, kind, x, y, text=None):
-        event = {"id": self.next_id(), "type": kind, "x": x, "y": y}
+    def event(self, event_type, x, y, text=None, **details):
+        event = {"id": self.next_id(), "type": event_type, "x": x, "y": y}
+        event.update(details)
         if text:
             event["text"] = text
         self.events.append(event)
@@ -395,6 +396,38 @@ class TankManager:
             "tick": room.tick, "mode": "practice" if room.practice else "online",
         }
 
+    def _practice_spawn(self, room, player, occupied):
+        """Find a nearby, reachable opponent spawn only when that opponent respawns."""
+        humans = [other for other in occupied if not other.bot]
+        if not room.practice or not player.bot or not humans:
+            return None
+        target = humans[0]
+        candidates = []
+        for distance in (420, 540, 360, 630):
+            for index in range(24):
+                angle = index * math.tau / 24
+                x = target.x + math.cos(angle) * distance
+                y = target.y + math.sin(angle) * distance
+                if not _clear(room, x, y, player.id, radius=RADIUS + 4):
+                    continue
+                if any(math.hypot(x - other.x, y - other.y) < 300 for other in occupied):
+                    continue
+                # A wall between the tanks gives the player time to find and approach the bot.
+                exposed = _wall_hit(room.map, x, y, target.x - x, target.y - y) is None
+                candidates.append((exposed, abs(distance - 450), index, x, y))
+        for _, _, _, x, y in sorted(candidates):
+            route = self._route(room.map, x, y, target.x, target.y)
+            if not route:
+                continue
+            previous = (x, y)
+            length = 0
+            for point in route:
+                length += math.dist(previous, point)
+                previous = point
+            if length <= 1100:
+                return {"x": x, "y": y, "angle": math.atan2(target.y - y, target.x - x)}
+        return None
+
     def _spawn(self, room, player, initial=False):
         occupied = [other for other in room.players.values() if other.id != player.id and other.connected and other.hp > 0]
         candidates = [point for point in room.map["spawns"] if _clear(room, point["x"], point["y"], player.id)]
@@ -410,6 +443,7 @@ class TankManager:
             spawn = max(candidates, key=lambda point: min(
                 (point["x"] - other.x) ** 2 + (point["y"] - other.y) ** 2 for other in occupied
             ))
+        spawn = self._practice_spawn(room, player, occupied) or spawn
         player.x, player.y, player.angle = spawn["x"], spawn["y"], spawn["angle"]
         player.hp = 100
         player.respawn_at = 0.0
@@ -521,6 +555,8 @@ class TankManager:
     def _fire(self, room, player):
         player.next_shot = self.clock + 1.0
         kind = player.weapon if self.clock < player.weapon_until else "normal"
+        room.event("fire", player.x, player.y, playerId=player.id,
+                   angle=player.angle, weapon=kind, color=player.color)
         shots = ((-0.12, 20), (0.12, 20)) if kind == "double" else ((0, 40 if kind == "heavy" else 25),)
         for offset, damage in shots:
             angle = player.angle + offset
@@ -572,10 +608,14 @@ class TankManager:
 
     def _hit(self, room, bullet, target):
         if target.shield_until > self.clock + EPSILON:
-            room.event("hit", bullet.x, bullet.y, "护盾挡下了一发炮弹")
+            room.event("hit", bullet.x, bullet.y, "护盾挡下了一发炮弹",
+                       playerId=target.id, targetId=target.id, sourceId=bullet.owner_id,
+                       damage=0, blocked=True, color=target.color)
             return
+        damage = min(target.hp, bullet.damage)
         target.hp = max(0, target.hp - bullet.damage)
-        room.event("hit", bullet.x, bullet.y)
+        room.event("hit", bullet.x, bullet.y, playerId=target.id, targetId=target.id,
+                   sourceId=bullet.owner_id, damage=damage, blocked=False, color=target.color)
         if target.hp > 0:
             return
         target.deaths += 1
@@ -583,11 +623,13 @@ class TankManager:
         owner = room.players.get(bullet.owner_id)
         if owner and owner.id != target.id:
             owner.kills += 1
-            room.event("kill", target.x, target.y, f"{owner.name} 击毁了 {target.name}")
+            room.event("kill", target.x, target.y, f"{owner.name} 击毁了 {target.name}",
+                       playerId=owner.id, sourceId=owner.id, targetId=target.id, color=target.color)
             if owner.kills >= KILL_LIMIT:
                 self._finish(room, owner.id)
         else:
-            room.event("kill", target.x, target.y, f"{target.name} 被反弹炮弹击毁")
+            room.event("kill", target.x, target.y, f"{target.name} 被反弹炮弹击毁",
+                       playerId=target.id, sourceId=bullet.owner_id, targetId=target.id, color=target.color)
 
     @staticmethod
     def _finish(room, winner_id):
@@ -640,7 +682,8 @@ class TankManager:
             else:
                 player.weapon, player.weapon_until = kind, self.clock + 15
             label = {"heal": "医疗包", "shield": "护盾", "double": "双发升级", "heavy": "重炮升级"}[kind]
-            room.event("pickup", item["x"], item["y"], f"{player.name} 拾取了{label}")
+            room.event("pickup", item["x"], item["y"], f"{player.name} 拾取了{label}",
+                       playerId=player.id, kind=kind)
         room.pickups = available
 
     @staticmethod

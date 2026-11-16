@@ -2,15 +2,15 @@
   "use strict";
 
   const THEMES = {
-    classic: { paper: "#f3eedf", edge: "#e3dac7", grain: "#806a4d", ink: "#39433d", trim: "#a5ad8f" },
-    spring: { paper: "#f9ece6", edge: "#e9cfc8", grain: "#b36677", ink: "#475847", trim: "#e398ae" },
-    summer: { paper: "#faf0d8", edge: "#ead7ad", grain: "#ae894b", ink: "#2c7182", trim: "#67bfcb" },
-    autumn: { paper: "#f9e9d5", edge: "#e9cdaa", grain: "#ad6e40", ink: "#6e4935", trim: "#d98540" },
-    winter: { paper: "#edf4f4", edge: "#d4e3e8", grain: "#6e9aaa", ink: "#526c7e", trim: "#92bbce" },
+    classic: { paper: "#e5e2cf", edge: "#b8bca5", grain: "#687661", ink: "#394d43", trim: "#8f9d69" },
+    spring: { paper: "#e6edcf", edge: "#b6c4a2", grain: "#7d956b", ink: "#3e6449", trim: "#e398ae" },
+    summer: { paper: "#f0dfba", edge: "#c5aa7d", grain: "#ae894b", ink: "#2c7182", trim: "#67bfcb" },
+    autumn: { paper: "#eddbb6", edge: "#c7a274", grain: "#ad6e40", ink: "#6e4935", trim: "#d98540" },
+    winter: { paper: "#e3edf0", edge: "#b7ccd4", grain: "#6e9aaa", ink: "#526c7e", trim: "#92bbce" },
   };
 
   const MATERIALS = {
-    wall: { dark: "#293732", light: "#56645a", bottom: "#1e2925", detail: "#aeb399" },
+    wall: { dark: "#4c6250", light: "#9ca47b", bottom: "#293e33", detail: "#d5d6a4" },
     hedge: { dark: "#425b42", light: "#7f9761", bottom: "#304632", detail: "#f1a9bd" },
     water: { dark: "#3e8fa2", light: "#80d4dc", bottom: "#326977", detail: "#caf8ed" },
     sand: { dark: "#a67643", light: "#e9bf83", bottom: "#865e39", detail: "#ffdea5" },
@@ -26,6 +26,14 @@
   };
   const PREVIEW_COLORS = ["#de6b53", "#518cbd", "#b29945", "#79a86a"];
   const TAU = Math.PI * 2;
+
+  // Keep the renderer compatible with Safari versions before Array.findLast.
+  function latestEffect(effects, matches) {
+    for (let index = effects.length - 1; index >= 0; index--) {
+      if (matches(effects[index])) return effects[index];
+    }
+    return undefined;
+  }
 
   function rounded(context, x, y, w, h, r) {
     const radius = Math.min(r, w / 2, h / 2);
@@ -117,7 +125,8 @@
     const material = MATERIALS[kind] || MATERIALS.wall;
     const vertical = h > w;
     const radius = kind === "water" ? 12 : 7;
-    rect(context, x + 2, y + 5, w, h, radius + 1, "#30372c25");
+    rect(context, x + 4, y + 7, w, h, radius + 1, "#253d2f28");
+    rect(context, x + 1, y + 3, w, h, radius + 1, "#253d2f21");
     rect(context, x, y, w, h, radius, material.bottom);
     rect(context, x + 2, y + 2, w - 4, h - 5, radius - 1,
       gradient(context, x, y, x + (vertical ? w : 1), y + (vertical ? 1 : h), material.light, material.dark));
@@ -181,7 +190,8 @@
           dot(context, xx, yy, 3.4, material.detail);
           dot(context, xx + 7, yy + 7, 2.7, "#976a4578");
         } else {
-          line(context, [xx, yy, xx + (vertical ? 8 : 13), yy + (vertical ? 12 : 0)], "#cad4b63f", 1.4);
+          line(context, vertical ? [x + 2, yy + 5, x + w - 2, yy + 5] : [xx + 5, y + 2, xx + 5, y + h - 3], "#243b3555", 1.5);
+          dot(context, xx + 3, yy + 2, 1.5, material.detail);
         }
       }
     }
@@ -207,6 +217,23 @@
     }
     context.globalAlpha = 1;
 
+    // Low-contrast paving and workshop markings are decoration, not extra colliders.
+    for (let y = 40; y < height - 30; y += 96) {
+      for (let x = 40; x < width - 30; x += 96) {
+        context.fillStyle = random() < .5 ? "#ffffff0c" : "#53684d07";
+        context.fillRect(x, y, Math.min(94, width - 30 - x), Math.min(94, height - 30 - y));
+        line(context, [x + 4, y, Math.min(x + 89, width - 30), y], "#63775a10", 1);
+        if (random() < .12) {
+          line(context, [x + 20, y + 32, x + 20, y + 43], theme.edge, .9);
+          line(context, [x + 15, y + 37, x + 25, y + 37], theme.edge, .9);
+        }
+      }
+    }
+    context.font = "800 22px ui-monospace, monospace";
+    context.textAlign = "center";
+    context.fillStyle = theme.edge;
+    context.fillText("T A N K   A R E N A", width / 2, height - 38);
+
     rounded(context, 10, 10, width - 20, height - 20, 18);
     context.strokeStyle = theme.edge;
     context.lineWidth = 16;
@@ -226,15 +253,22 @@
       line(context, [width - 26, y + 7, width - 26, y + 17], theme.edge, 2);
     }
 
-    for (const spawn of map.spawns || []) {
+    for (const [index, spawn] of (map.spawns || []).entries()) {
+      dot(context, spawn.x, spawn.y, 39, "#fffefa40");
       context.beginPath();
-      context.arc(spawn.x, spawn.y, 27, 0, TAU);
+      context.arc(spawn.x, spawn.y, 34, 0, TAU);
       context.strokeStyle = theme.edge;
-      context.lineWidth = 1.5;
-      context.setLineDash([4, 5]);
+      context.lineWidth = 2;
+      context.setLineDash([8, 5]);
       context.stroke();
       context.setLineDash([]);
-      dot(context, spawn.x, spawn.y, 2.8, theme.edge);
+      line(context, [spawn.x - 12, spawn.y, spawn.x + 12, spawn.y], theme.edge, 2);
+      line(context, [spawn.x, spawn.y - 12, spawn.x, spawn.y + 12], theme.edge, 2);
+      context.font = "700 10px ui-monospace, monospace";
+      context.fillStyle = theme.ink;
+      context.globalAlpha = .45;
+      context.fillText("0" + (index + 1), spawn.x, spawn.y + 50);
+      context.globalAlpha = 1;
     }
 
     for (let index = 0; index < 60; index++) {
@@ -253,76 +287,108 @@
     for (const wall of map.walls || []) drawWall(context, wall, random);
   }
 
-  function drawTank(context, player, selected, preview, labelScale = 1) {
+  function drawTank(context, player, selected, preview, labelScale = 1, effects = [], reducedMotion = false) {
     if (player.hp <= 0 || player.respawnIn > 0) return;
     const tint = player.color || PREVIEW_COLORS[0];
+    const fired = latestEffect(effects, effect => effect.type === "fire" && effect.playerId === player.id && effect.age < .4);
+    const damaged = latestEffect(effects, effect => effect.type === "hit" && (effect.targetId || effect.playerId) === player.id && !effect.blocked && effect.age < .3);
+    const recoil = !reducedMotion && fired ? Math.sin(Math.min(1, fired.age / .4) * Math.PI) * 3.4 : 0;
     context.save();
     context.translate(player.x, player.y);
     if (player.connected === false) context.globalAlpha = .52;
 
     if (selected && !preview) {
       context.beginPath();
-      context.ellipse(0, 0, 26.5, 25, 0, 0, TAU);
-      context.lineWidth = 2;
-      context.strokeStyle = tint;
+      context.arc(0, 0, 26.5, 0, TAU);
+      context.lineWidth = 1.8;
+      context.strokeStyle = "#fffef5e8";
       context.stroke();
       context.beginPath();
-      context.ellipse(0, 0, 28.5, 27, 0, 0, TAU);
-      context.lineWidth = 1;
-      context.strokeStyle = "#ffffffe0";
+      context.arc(0, 0, 28.5, .2, TAU - .2);
+      context.lineWidth = 1.5;
+      context.strokeStyle = tint;
       context.stroke();
     }
     if (player.shield > 0 && !preview) {
+      dot(context, 0, 0, 24, "#7fdcf12a");
       context.beginPath();
-      context.arc(0, 0, 23, 0, TAU);
-      context.fillStyle = "#81dbf04a";
-      context.fill();
-      context.lineWidth = 2.5;
-      context.strokeStyle = "#66c9d9";
+      context.arc(0, 0, 24, 0, TAU);
+      context.lineWidth = 2;
+      context.strokeStyle = "#39adcbd0";
       context.stroke();
+      for (let i = 0; i < 4; i++) {
+        const angle = i * TAU / 4 + .4;
+        dot(context, Math.cos(angle) * 24, Math.sin(angle) * 24, 2.2, "#eeffff");
+      }
     }
 
     context.save();
     context.rotate(player.angle || 0);
-    rect(context, -17, -15, 37, 37, 8, "#2831263c");
-    for (const y of [-17, 9]) {
-      rect(context, -17, y, 33, 9, 3, "#252e2d");
-      for (let x = -13; x < 15; x += 5) line(context, [x, y + 2, x, y + 7], "#6c796c", 1.4);
+    rect(context, -16, -14, 36, 36, 7, "#1d332d36");
+    // Ribbed rubber tracks remain within the original tank silhouette.
+    for (const y of [-18, 9]) {
+      rect(context, -18, y, 34, 10, 3, "#1b2929");
+      rect(context, -16, y + 1.5, 30, 6.5, 2, "#455553");
+      for (let x = -14; x < 15; x += 4) {
+        line(context, [x, y + 1.5, x, y + 8], "#a4b3a377", 1.7);
+        dot(context, x, y + 4.5, .8, "#172323");
+      }
     }
-    rect(context, -15, -11, 30, 24, 5, "#263c35");
-    rect(context, -14, -11, 28, 21, 4.5, tint);
-    rect(context, -12, -10, 24, 7, 3, "#ffffff29");
-    rect(context, -13, 7, 25, 3, 1.4, "#1a29293e");
-    rect(context, -13, -4, 5, 8, 1.4, "#263c354f");
+    rect(context, -16, -12, 32, 25, 4.5, "#20322b");
+    rect(context, -14.5, -11.5, 29, 22.5, 3.5, tint);
+    rect(context, -14, -11, 28, 10, 3, gradient(context, 0, -11, 0, -1, "#ffffff66", "#ffffff00"));
+    line(context, [-13, 8.5, 12, 8.5], "#122f3b55", 3);
+    line(context, [12, -9, 12, 7], "#ecffe67d", 1.6);
+    for (const y of [-8, 6]) {
+      dot(context, -12, y, 1, "#eff7dbac");
+      dot(context, 11, y, 1, "#eff7dbac");
+    }
+    for (let x = -12; x <= -5; x += 2.5) line(context, [x, -4, x, 4], "#1c303c80", 1.4);
+    rect(context, 10, -12.5, 5, 3, 1, "#fff1bf");
+    rect(context, 10, 9, 5, 3, 1, "#f58c56");
+    context.translate(-recoil, 0);
     if (player.weapon === "double") {
-      for (const y of [-5.5, 2]) rect(context, 1, y, 21, 4.5, 1.4, "#283831");
+      for (const y of [-6, 2]) {
+        rect(context, 1, y, 23, 5, 1.2, "#203229");
+        rect(context, 5, y + 1, 17, 1.5, .4, "#aab798");
+        rect(context, 19, y - 1, 5, 7, 1, "#344b3a");
+      }
     } else {
       const heavy = player.weapon === "heavy";
-      rect(context, 0, heavy ? -5 : -3.5, 23, heavy ? 10 : 7, 2.2, "#243b32");
-      rect(context, 9, heavy ? -4 : -2.4, 11, heavy ? 3 : 1.9, .9, "#dde4cb5e");
-      rect(context, 20, heavy ? -5.5 : -4, 3.6, heavy ? 11 : 8, 1.3, "#1b2d27");
+      rect(context, 0, heavy ? -5 : -3.5, 26, heavy ? 10 : 7, 2, "#203329");
+      rect(context, 5, heavy ? -4 : -2.4, 18, heavy ? 3 : 2, 1, "#c2d0a5");
+      rect(context, 20, heavy ? -6 : -4.5, 6, heavy ? 12 : 9, 1.3, "#334b3c");
+      rect(context, 24, heavy ? -4 : -3, 2, heavy ? 8 : 6, .6, "#18291f");
     }
-    dot(context, -1.5, 0, 8.7, "#334a3d");
-    dot(context, -1.8, -.7, 7.1, tint);
-    dot(context, -3.2, -2.2, 3.7, "#ffffff49");
+    rect(context, -10, -9, 20, 18, 5, "#263e34");
+    rect(context, -9, -9, 18, 15.5, 4.5, tint);
+    line(context, [-6, -7, 6, -7], "#f5ffd18c", 2);
+    rect(context, -6, -4.5, 8.5, 8.5, 3, "#1f373757");
+    line(context, [-5, -3, 1, -3], "#e0f4cf8a", 1.2);
+    dot(context, 5, 2, 1.5, "#f9e4a8");
+    if (damaged) {
+      context.globalAlpha = .65 * (1 - damaged.age / .3);
+      rect(context, -14, -11, 28, 22, 4, "#ffffff");
+    }
     context.restore();
 
     if (!preview) {
       const labelY = player.y < 25 + 33 * labelScale ? 24 + 30 * labelScale : -24;
       context.translate(0, labelY);
       context.scale(labelScale, labelScale);
-      rect(context, -19, -13, 38, 5.7, 3, "#253831ab");
-      const hpWidth = 36 * Math.max(0, Math.min(1, player.hp / 100));
-      if (hpWidth > 0) rect(context, -18, -12.2, hpWidth, 4, 2, player.hp < 36 ? "#e66c63" : "#83bb82");
+      rect(context, -21, -13, 42, 6.5, 3, "#20362c");
+      const hpWidth = 39 * Math.max(0, Math.min(1, player.hp / 100));
+      if (hpWidth > 0) rect(context, -19.5, -11.6, hpWidth, 3.7, 1.8, player.hp < 36 ? "#f07a53" : "#a6cf79");
+      for (const x of [-10, 0, 10]) line(context, [x, -11.5, x, -8], "#20362c63", .8);
       const name = String(player.name || "");
-      context.font = "700 13px system-ui, sans-serif";
+      context.font = "800 12px system-ui, sans-serif";
       context.textAlign = "center";
       context.textBaseline = "middle";
       context.lineWidth = 3.5;
       context.strokeStyle = "#fffffff0";
       context.lineJoin = "round";
       context.strokeText(name, 0, -23, 94);
-      context.fillStyle = "#253832";
+      context.fillStyle = "#20382c";
       context.fillText(name, 0, -23, 94);
     }
     context.restore();
@@ -364,7 +430,7 @@
   }
 
   function drawBullet(context, bullet, map) {
-    const tint = bullet.kind === "heavy" ? "#a967af" : bullet.kind === "double" ? "#d59542" : "#506257";
+    const tint = bullet.kind === "heavy" ? "#9259bd" : bullet.kind === "double" ? "#d68620" : "#dc6b28";
     const radius = bullet.kind === "heavy" ? 5 : 3.5;
     const magnitude = Math.hypot(bullet.vx, bullet.vy) || 1;
     const dx = bullet.vx / magnitude;
@@ -386,25 +452,62 @@
       const fill = gradient(context, fromX, fromY, bullet.x, bullet.y, tint + "00", tint + "c0");
       line(context, [fromX, fromY, bullet.x, bullet.y], fill, radius + 1);
     }
+    dot(context, bullet.x + 1, bullet.y + 2, radius + 1, "#26362d2b");
+    dot(context, bullet.x, bullet.y, radius + .8, "#483e2c");
     dot(context, bullet.x, bullet.y, radius, tint);
     dot(context, bullet.x + dx, bullet.y + dy, radius * .56, "#fff0c8");
   }
 
-  function drawEffect(context, effect) {
+  function drawEffect(context, effect, labelScale = 1, reducedMotion = false) {
     const age = Number(effect.age);
     if (!Number.isFinite(age) || age < 0 || age >= 1) return;
     const { x, y, type } = effect;
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    const palette = {
-      bounce: ["#c78b48", "#f7e8ba", 6, 19],
-      hit: ["#de6c57", "#fff0b4", 8, 25],
-      kill: ["#b75046", "#f3a968", 12, 46],
-      pickup: ["#5d9e74", "#f0f6bd", 7, 31],
-    };
-    const [base, spark, count, extent] = palette[type] || palette.hit;
-    const expansion = 1 - (1 - age) ** 3;
     context.save();
+    if (type === "fire") {
+      // A short directional flash is readable without obscuring the next projectile.
+      if (age < .3) {
+        context.translate(x, y);
+        context.rotate(Number(effect.angle) || 0);
+        context.globalAlpha = 1 - age / .3;
+        const length = (effect.weapon === "heavy" ? 24 : 18) * (1 - age);
+        const barrels = effect.weapon === "double" ? [-4, 4] : [0];
+        for (const barrel of barrels) {
+          context.beginPath();
+          context.moveTo(24, barrel - 2);
+          context.lineTo(30, barrel - 8);
+          context.lineTo(30 + length, barrel);
+          context.lineTo(30, barrel + 8);
+          context.lineTo(24, barrel + 2);
+          context.closePath();
+          context.fillStyle = "#ef9c3ee0";
+          context.fill();
+          dot(context, 29, barrel, 5, "#fff2bf");
+        }
+      }
+      context.restore();
+      return;
+    }
+    const palette = {
+      bounce: ["#d08636", "#fff7c2", 6, 20],
+      hit: [effect.blocked ? "#51b7cf" : "#dd693d", "#fff0b4", 9, 27],
+      kill: [effect.color || "#b75046", "#ffc269", 17, 54],
+      pickup: ["#60a46c", "#e5f5aa", 9, 36],
+    };
+    if (!palette[type]) { context.restore(); return; }
+    const [base, spark, count, extent] = palette[type];
+    const expansion = reducedMotion ? .65 : 1 - (1 - age) ** 3;
     context.globalAlpha = (1 - age) * .9;
+    if (type === "kill") {
+      for (let index = 0; index < 5; index++) {
+        const angle = index * TAU / 5;
+        dot(context, x + Math.cos(angle) * 20 * expansion,
+          y + Math.sin(angle) * 20 * expansion - (reducedMotion ? 0 : age * 12),
+          7 + age * 9, "#52605233");
+      }
+      dot(context, x, y, 22 * (1 - age), "#fba849");
+      dot(context, x, y, 12 * (1 - age), "#fff7c7");
+    }
     context.beginPath();
     context.arc(x, y, 4 + extent * expansion, 0, TAU);
     context.strokeStyle = base;
@@ -416,7 +519,22 @@
       const dy = Math.sin(angle);
       const far = extent * expansion * (index % 2 ? .64 : 1);
       const near = Math.max(0, far - 10 * (1 - age));
-      line(context, [x + dx * near, y + dy * near, x + dx * far, y + dy * far], index % 2 ? spark : base, 2.1);
+      line(context, [x + dx * near, y + dy * near, x + dx * far, y + dy * far], index % 2 ? spark : base, type === "kill" ? 3.2 : 2.1);
+    }
+    const damage = Number(effect.damage);
+    const label = type === "hit" ? effect.blocked ? "抵挡" : damage > 0 ? "−" + damage : ""
+      : type === "pickup" ? "补给 +" : type === "kill" ? "击毁" : "";
+    if (label) {
+      context.translate(x, y - 35 - (reducedMotion ? 0 : 24 * age));
+      context.scale(labelScale, labelScale);
+      context.font = "900 15px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.lineWidth = 4;
+      context.strokeStyle = "#fff9ed";
+      context.strokeText(label, 0, 0);
+      context.fillStyle = type === "pickup" ? "#38764e" : effect.blocked ? "#2189a3" : "#a94025";
+      context.fillText(label, 0, 0);
     }
     context.restore();
   }
@@ -436,6 +554,45 @@
     let awaitingSize = true;
     let pixelRatio = 1;
     let cssWidth = 0;
+    const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    const tracks = [];
+    const trackOrigins = new Map();
+    let trackMap;
+
+    function drawTracks(state, time, view) {
+      if (trackMap !== state.map.id || state.phase !== "playing") {
+        tracks.length = 0;
+        trackOrigins.clear();
+        trackMap = state.map.id;
+      }
+      if (state.phase !== "playing") return;
+      for (const player of state.players || []) {
+        if (!player.hp || player.respawnIn > 0 || player.connected === false) {
+          trackOrigins.delete(player.id);
+          continue;
+        }
+        const old = trackOrigins.get(player.id);
+        const distance = old ? Math.hypot(player.x - old.x, player.y - old.y) : 0;
+        if (!old || distance > 85) trackOrigins.set(player.id, { x: player.x, y: player.y });
+        else if (distance > 14) {
+          tracks.push({ x: player.x, y: player.y, angle: player.angle, time });
+          trackOrigins.set(player.id, { x: player.x, y: player.y });
+        }
+      }
+      while (tracks.length > 100 || (tracks.length && time - tracks[0].time > 5000)) tracks.shift();
+      for (const track of tracks) {
+        if (track.x < view.x - 30 || track.x > view.x + view.width + 30 || track.y < view.y - 30 || track.y > view.y + view.height + 30) continue;
+        context.save();
+        context.translate(track.x, track.y);
+        context.rotate(track.angle || 0);
+        context.globalAlpha = .12 * Math.max(0, 1 - (time - track.time) / 5000);
+        for (const y of [-15, 11]) {
+          context.fillStyle = "#354c3b";
+          context.fillRect(-8, y, 13, 4);
+        }
+        context.restore();
+      }
+    }
 
     function measureCanvas() {
       const bounds = canvas.getBoundingClientRect();
@@ -541,6 +698,8 @@
       const { width, height } = canvas;
       const { playerId, preview = false, overview = false, effects = [], time = 0 } = options;
       const current = (state.players || []).find(player => player.id === playerId);
+      const reducedMotion = Boolean(reducedMotionQuery?.matches);
+      const ownDamage = latestEffect(effects, effect => effect.type === "hit" && (effect.targetId || effect.playerId) === playerId && !effect.blocked && effect.age < .45);
       const follow = !preview && !overview && state.phase === "playing" && current;
       // Keep tanks readable on a phone; desktop view remains about 1200 × 760 world units.
       const referenceWidth = cssWidth < 480 ? 560 : 1200;
@@ -567,7 +726,8 @@
       const layerHeight = Math.max(1, Math.round(map.height * cacheScale));
       const nextKey = `${map.id}/${map.width}/${map.height}/${map.walls.length}/${layerWidth}/${layerHeight}`;
       context.save();
-      context.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+      const kick = !reducedMotion && follow && ownDamage ? (1 - ownDamage.age / .45) * 2 * pixelRatio : 0;
+      context.setTransform(scale, 0, 0, scale, offsetX + Math.sin(time * .12) * kick, offsetY + Math.cos(time * .09) * kick);
       if (layerContext) {
         if (nextKey !== cacheKey) {
           layer.width = layerWidth;
@@ -591,13 +751,24 @@
         const visible = (item, margin = 80) => item.x >= view.x - margin && item.y >= view.y - margin
           && item.x <= view.x + view.width + margin && item.y <= view.y + view.height + margin;
         const labelScale = Math.max(1, Math.min(2.4, 8 * pixelRatio / (13 * scale)));
-        for (const item of state.pickups || []) if (visible(item)) drawPickup(context, item, time / 1000);
+        drawTracks(state, time, view);
+        for (const item of state.pickups || []) if (visible(item)) drawPickup(context, item, reducedMotion ? 0 : time / 1000);
         for (const bullet of state.bullets || []) if (visible(bullet, 35)) drawBullet(context, bullet, map);
-        for (const player of state.players || []) if (visible(player, 150)) drawTank(context, player, player.id === playerId, false, labelScale);
-        for (const effect of effects) if (visible(effect)) drawEffect(context, effect);
+        for (const player of state.players || []) if (visible(player, 150)) drawTank(context, player, player.id === playerId, false, labelScale, effects, reducedMotion);
+        for (const effect of effects) if (visible(effect)) drawEffect(context, effect, labelScale, reducedMotion);
       }
       context.restore();
-      if (follow) drawMinimap(state, view, playerId);
+      if (follow) {
+        if (ownDamage && !reducedMotion) {
+          context.save();
+          context.globalAlpha = Math.max(0, .15 * (1 - ownDamage.age / .45));
+          context.strokeStyle = "#d4482e";
+          context.lineWidth = 12 * pixelRatio;
+          context.strokeRect(0, 0, width, height);
+          context.restore();
+        }
+        drawMinimap(state, view, playerId);
+      }
     }
 
     resize();
@@ -607,6 +778,8 @@
       destroy() {
         disposed = true;
         lastFrame = undefined;
+        tracks.length = 0;
+        trackOrigins.clear();
         layer.width = 0;
         layer.height = 0;
         miniLayer.width = 0;

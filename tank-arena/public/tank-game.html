@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="坦克对战">
-  <title>坦克对战 · 像素工坊</title>
+  <title>坦克大战 · 像素工坊</title>
   <link rel="manifest" href="/tank.webmanifest">
   <link rel="apple-touch-icon" href="/tank-icon-180.png">
   <link rel="icon" type="image/png" href="/tank-icon-192.png">
@@ -19,7 +19,7 @@
 </head>
 <body>
   <header class="tank-topbar">
-    <a href="/games/tanks" class="tank-brand"><span class="tank-brand-icon" aria-hidden="true">▰</span><span>坦克对战<small>TANK ARENA</small></span></a>
+    <a href="/games/tanks" class="tank-brand"><span class="tank-brand-icon" aria-hidden="true">▰</span><span>坦克大战<small>TANK ARENA / 02</small></span></a>
     <nav aria-label="游戏导航"><a href="/games/tanks">游戏介绍</a><button id="tank-help-toggle" class="text-button" type="button">玩法说明 <span aria-hidden="true">↗</span></button></nav>
     <div class="connection"><i aria-hidden="true"></i><span id="tank-connection" role="status">准备连接</span></div>
   </header>
@@ -28,10 +28,62 @@
     <section id="tank-lobby" aria-labelledby="lobby-heading">
       <div id="tank-install-strip" class="install-strip"><div><span class="install-icon" aria-hidden="true">▰</span><p><strong>把战场装进口袋</strong><small>添加到桌面，下次一点就开战</small></p></div><button id="tank-install" type="button">添加到桌面 <span aria-hidden="true">＋</span></button></div>
       <div class="lobby-intro">
-        <div class="lobby-copy"><p class="eyebrow"><span></span> 反弹，让对战多一点意外</p><h1 id="lobby-heading">一发入魂，<br><span>十次反弹。</span></h1><p class="hero-description">驾驶你的小坦克，绕过迷宫，算好弹道。<br>把房间码发给朋友，下一发会是谁的高光？</p><div class="rule-chips"><span><b>2–4</b> 人联机</span><span><b>1s</b> 开火间隔</span><span><b>9</b> 张地图</span></div><p class="lobby-hint"><span aria-hidden="true">✦</span> 先拿下 5 次击毁，或者在 3 分钟结束时领先。</p></div>
+        <div class="lobby-copy">
+          <div class="hero-topline"><p class="eyebrow"><span></span> 迷宫里的装甲对决</p><span class="hero-edition">MULTIPLAYER ARCADE</span></div>
+          <h1 id="lobby-heading">坦克大战<span>转角，见真章。</span></h1>
+          <p class="hero-description">瞄准，开火，借墙反击。<br>叫上朋友，用一发漂亮的反弹结束战斗。</p>
+          <div class="hero-art" aria-hidden="true">
+            <svg viewBox="0 0 660 290" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="hero-armor" x1="0" y1="0" x2="0" y2="170" gradientUnits="userSpaceOnUse"><stop stop-color="#D4E1A6"/><stop offset="1" stop-color="#7F9C5D"/></linearGradient>
+                <linearGradient id="hero-turret" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse"><stop stop-color="#DDE8B8"/><stop offset="1" stop-color="#91B16C"/></linearGradient>
+                <pattern id="hero-grid" width="38" height="38" patternUnits="userSpaceOnUse"><path d="M38 0H0V38" stroke="#B7C79E" stroke-opacity=".09"/></pattern>
+                <pattern id="hero-treads" width="17" height="12" patternUnits="userSpaceOnUse"><path d="M2 0V12M8 0V12" stroke="#7F8974" stroke-width="3"/></pattern>
+              </defs>
+              <rect width="660" height="290" fill="url(#hero-grid)"/>
+              <g stroke="#9AAA82" stroke-opacity=".2"><circle cx="417" cy="147" r="116"/><circle cx="417" cy="147" r="95" stroke-dasharray="3 9"/><path d="M279 147H555M417 9V285"/></g>
+              <path d="M28 71H171V119M80 241H209V206M532 42H614V125M544 255H633" stroke="#15251D" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M28 65H171V113M80 235H209V200M532 36H614V119M544 249H633" stroke="#698064" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M498 111L583 78L397 29L207 93L81 158" stroke="#FFC989" stroke-width="2" stroke-dasharray="7 7"/>
+              <circle cx="583" cy="78" r="5" fill="#F7B66F"/><circle cx="397" cy="29" r="4" fill="#F7B66F"/><circle cx="207" cy="93" r="4" fill="#F7B66F"/>
+              <g transform="translate(332 71) rotate(-19 90 80)">
+                <ellipse cx="92" cy="108" rx="113" ry="64" fill="#101E17" fill-opacity=".65"/>
+                <rect x="-4" y="5" width="188" height="44" rx="15" fill="#15231D" stroke="#0D1914" stroke-width="4"/>
+                <rect x="-4" y="117" width="188" height="44" rx="15" fill="#15231D" stroke="#0D1914" stroke-width="4"/>
+                <rect x="4" y="11" width="172" height="30" rx="9" fill="url(#hero-treads)"/><rect x="4" y="125" width="172" height="28" rx="9" fill="url(#hero-treads)"/>
+                <path d="M18 41L39 26H145L163 43V125L145 139H37L18 123Z" fill="#446246" stroke="#162A21" stroke-width="4"/>
+                <path d="M18 33L39 18H145L163 35V117L145 131H37L18 115Z" fill="url(#hero-armor)" stroke="#233B2D" stroke-width="4"/>
+                <path d="M28 41L43 29H137L150 42" stroke="#E8EDC3" stroke-width="5" stroke-linecap="round"/>
+                <path d="M34 109H58M34 101H58M34 93H58" stroke="#56744A" stroke-width="4" stroke-linecap="round"/>
+                <rect x="134" y="53" width="13" height="38" rx="3" fill="#688753"/><path d="M140 58V86" stroke="#D0DE9D" stroke-width="3"/>
+                <circle cx="88" cy="77" r="37" fill="#3D5B3E"/>
+                <rect x="91" y="61" width="101" height="25" rx="5" fill="#466342" stroke="#223B2C" stroke-width="4"/>
+                <rect x="127" y="64" width="61" height="8" rx="2" fill="#A4BF7E"/>
+                <rect x="184" y="55" width="21" height="36" rx="4" fill="#2B4230" stroke="#172D20" stroke-width="3"/>
+                <path d="M190 62V81" stroke="#92AC6D" stroke-width="4"/>
+                <circle cx="82" cy="69" r="34" fill="url(#hero-turret)" stroke="#496643" stroke-width="3"/>
+                <circle cx="76" cy="62" r="15" fill="#759458" stroke="#D3DFAB" stroke-width="3"/>
+                <path d="M75 51V70M66 60H84" stroke="#BDD29B" stroke-width="3"/>
+                <path d="M50 44L60 34M104 93L115 83" stroke="#EBF1C8" stroke-width="3" stroke-linecap="round"/>
+                <g fill="#E6EDBF"><circle cx="30" cy="49" r="3"/><circle cx="30" cy="115" r="3"/><circle cx="150" cy="49" r="3"/><circle cx="150" cy="115" r="3"/></g>
+                <path d="M222 72L239 58L235 71L252 74L235 79L238 91Z" fill="#F4AE67"/><path d="M219 74H235" stroke="#FFF0BF" stroke-width="5" stroke-linecap="round"/>
+              </g>
+              <g transform="translate(92 141) rotate(26 30 25)">
+                <rect x="-7" y="-5" width="70" height="17" rx="5" fill="#15251D"/><rect x="-7" y="45" width="70" height="17" rx="5" fill="#15251D"/>
+                <path d="M1 7L10 1H49L57 9V47L49 55H10L1 47Z" fill="#E49A62" stroke="#483B2B" stroke-width="3"/>
+                <path d="M8 10H48" stroke="#FFD1A0" stroke-width="3"/>
+                <rect x="31" y="22" width="39" height="10" rx="2" fill="#594B34"/><circle cx="27" cy="27" r="14" fill="#F5B479" stroke="#B77845" stroke-width="3"/><circle cx="24" cy="24" r="5" fill="#FFD6A8"/>
+              </g>
+              <g stroke="#C7D9AA" stroke-opacity=".55" stroke-width="1.5"><path d="M247 132V145M240 138H253M286 240V251M281 246H292M583 196V209M577 203H590"/></g>
+              <text class="hero-art-caption" x="27" y="283" fill="#8DA081" font-family="monospace" font-size="10" letter-spacing="2">ARMOR READY · RICOCHET ×10</text>
+            </svg>
+          </div>
+          <div class="rule-chips"><span><b>2–4</b> 人联机</span><span><b>10</b> 次反弹</span><span><b>9</b> 张战场</span></div>
+          <p class="lobby-hint"><span aria-hidden="true">✦</span> 3 分钟一局 · 率先击毁 5 辆获胜</p>
+        </div>
         <div class="join-card">
-          <div class="card-eyebrow"><span class="live-dot"></span> 集合点 <span class="card-corner">01 / READY</span></div>
-          <h2>你的坦克，你的名字</h2>
+          <div class="card-eyebrow"><span class="live-dot"></span> 作战准备 <span class="card-corner">READY TO ROLL</span></div>
+          <h2>准备出击</h2>
           <label for="tank-name">玩家昵称</label><input id="tank-name" maxlength="12" autocomplete="nickname" placeholder="取个响亮的名字" value="坦克手">
           <button id="tank-create" class="button button-primary" type="button">创建房间 <span aria-hidden="true">＋</span></button>
           <div class="join-divider"><span>已有朋友在等你？</span></div>
@@ -43,7 +95,7 @@
       </div>
 
       <section class="map-section" aria-labelledby="maps-heading">
-        <div class="section-title"><div><p class="eyebrow">五倍战场 · 更多路线</p><h2 id="maps-heading">九张地图，九种战术。</h2></div><label class="map-picker" for="tank-map-select">下一场地图<select id="tank-map-select"><option value="random">随机地图 · 每局新惊喜</option></select></label></div>
+        <div class="section-title"><div><p class="eyebrow">五倍战场 · 更多路线</p><h2 id="maps-heading">选一张战场，换一种打法。</h2></div><label class="map-picker" for="tank-map-select">下一场地图<select id="tank-map-select"><option value="random">随机地图 · 每局新惊喜</option></select></label></div>
         <div id="tank-map-grid" class="tank-map-grid" aria-label="地图选择"></div>
         <div class="pickup-guide"><span class="pickup-title">路上别错过</span><span><i class="pickup-icon heal">✚</i>医疗包</span><span><i class="pickup-icon double">Ⅱ</i>双发炮弹</span><span><i class="pickup-icon heavy">◆</i>重型炮弹</span><span><i class="pickup-icon shield">◇</i>临时护盾</span></div>
       </section>
@@ -61,11 +113,16 @@
         <div class="battle-column">
           <div id="tank-arena" class="arena-card">
             <div class="arena-top"><button id="tank-room-back" type="button" class="view-button mobile-room-back" aria-label="查看房间与战绩" hidden>房间</button><div><span class="arena-mark" aria-hidden="true"></span><strong id="tank-map-name">正在载入地图</strong></div><span id="tank-timer" class="arena-timer">03:00</span><button id="tank-view-toggle" type="button" class="view-button" aria-pressed="false" aria-controls="tank-canvas" disabled>查看全图</button><button id="tank-fullscreen" type="button" class="view-button" aria-label="全屏对战" aria-pressed="false">全屏</button><button id="tank-sound" type="button" class="sound-button" aria-pressed="true">声音开</button></div>
-            <div id="tank-stage" class="tank-stage"><canvas id="tank-canvas" width="1200" height="760" tabindex="0" aria-label="坦克对战场地">请使用支持 Canvas 的浏览器。</canvas><div id="tank-overlay" class="tank-overlay" hidden></div></div><div class="touch-controls" aria-label="触控驾驶"><div class="joystick-wrap"><div id="tank-joystick" class="joystick-pad" role="group" aria-label="移动摇杆，拖动控制坦克方向"><span class="joystick-arrows" aria-hidden="true">＋</span><span id="tank-joystick-knob" class="joystick-knob" aria-hidden="true"></span></div><span class="touch-label">拖动驾驶</span></div><button data-tank-control="fire" class="touch-fire" aria-label="开火" type="button">开火</button></div>
-            <div class="arena-bottom"><span><i class="health-dot"></i>生命 <strong id="tank-health">100</strong></span><span>武器 <strong id="tank-weapon">普通炮弹</strong></span><span>装填 <strong id="tank-cooldown">准备就绪</strong></span><span id="tank-mobile-connection" class="mobile-connection" role="status">连接正常</span></div>
+            <div id="tank-stage" class="tank-stage"><canvas id="tank-canvas" width="1200" height="760" tabindex="0" aria-label="坦克对战场地">请使用支持 Canvas 的浏览器。</canvas><div id="tank-overlay" class="tank-overlay" hidden></div><p id="tank-combat-notice" class="combat-notice" role="status"></p><p id="tank-feedback" class="tank-feedback" aria-live="polite"></p></div><div class="touch-controls" aria-label="触控驾驶"><div class="joystick-wrap"><div id="tank-joystick" class="joystick-pad" role="group" aria-label="移动摇杆，拖动控制坦克方向"><span class="joystick-arrows" aria-hidden="true">＋</span><span id="tank-joystick-knob" class="joystick-knob" aria-hidden="true"></span></div><span class="touch-label">拖动驾驶</span></div><button data-tank-control="fire" class="touch-fire" aria-label="开火" type="button">开火</button></div>
+            <div class="arena-bottom">
+              <div class="hud-stat hud-health"><span><i class="health-dot"></i>装甲 <strong id="tank-health">100 / 100</strong></span><div class="hud-meter" aria-hidden="true"><i id="tank-health-meter"></i></div></div>
+              <div class="hud-stat hud-weapon"><span>武器 <strong id="tank-weapon">普通炮弹</strong></span></div>
+              <div class="hud-stat hud-reload"><span>装填 <strong id="tank-cooldown">准备就绪</strong></span><div class="hud-meter" aria-hidden="true"><i id="tank-reload-meter"></i></div></div>
+              <strong id="tank-score-live" class="hud-score">击毁 0 / 5</strong>
+              <span id="tank-mobile-connection" class="mobile-connection" role="status">连接正常</span>
+            </div>
           </div>
           <div class="battle-caption"><p><kbd>W</kbd><kbd>S</kbd> 前进 / 后退 <kbd>A</kbd><kbd>D</kbd> 转向 <kbd>空格</kbd> 开火 <kbd>M</kbd> 全图 / 跟随</p><span>小心！反弹的炮弹也会伤到自己。</span></div>
-          <p id="tank-feedback" class="tank-feedback" aria-live="polite"></p>
         </div>
       </div>
     </section>

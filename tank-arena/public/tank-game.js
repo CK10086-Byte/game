@@ -8,7 +8,7 @@
     'map-name', 'phase', 'health', 'weapon', 'cooldown', 'connection', 'feedback', 'overlay', 'help-toggle',
     'help', 'help-close', 'sound', 'share-note', 'room-share-note', 'invite-text', 'view-toggle',
     'arena', 'fullscreen', 'joystick', 'joystick-knob', 'room-back', 'resume', 'mobile-note',
-    'mobile-connection', 'install-help',
+    'mobile-connection', 'install-help', 'health-meter', 'reload-meter', 'score-live', 'combat-notice',
   ].map(id => [id, byId(id)]));
   const inputButtons = Array.from(document.querySelectorAll('[data-tank-control]'));
   const actions = ['forward', 'backward', 'left', 'right', 'fire'];
@@ -42,7 +42,8 @@
   let lastSentInput = false;
   let lastEvent = 0;
   let fireTaps = 0;
-  let muted = false;
+  const muteKey = 'pixel-workshop-tanks-muted';
+  let muted = readStorage(() => localStorage, muteKey) === '1';
   let overview = false;
   let immersive = false;
   let fullscreenBusy = false;
@@ -52,6 +53,7 @@
   const joystick = { pointerId: null, x: 0, y: 0, strength: 0, bounds: null };
   let audio;
   let feedbackUntil = 0;
+  let noticeUntil = 0;
   let listSignature = '';
   let overlaySignature = '';
 
@@ -343,10 +345,22 @@
     text(ui.timer, formatTimer(state.phase === 'lobby' || state.phase === 'countdown' ? 180 : state.remaining));
     const me = state.players.find(player => player.id === session.playerId);
     text(ui.health, Math.max(0, me?.hp ?? 0) + ' / 100');
-    text(ui.weapon, me?.shield > 0
-      ? (weaponLabels[me.weapon] || '普通炮弹') + ' · 护盾'
-      : weaponLabels[me?.weapon] || '普通炮弹');
+    const weaponName = (weaponLabels[me?.weapon] || '普通炮弹')
+      + (me?.weapon !== 'normal' && me?.weaponRemaining > 0 ? ' ' + Math.ceil(me.weaponRemaining) + 's' : '');
+    text(ui.weapon, weaponName + (me?.shield > 0 ? ' · 护盾 ' + Math.ceil(me.shield) + 's' : ''));
     text(ui.cooldown, me?.fireCooldown > 0.04 ? me.fireCooldown.toFixed(1) + ' 秒' : '可开火');
+    const health = Math.max(0, Math.min(100, me?.hp || 0));
+    const ready = Math.max(0, Math.min(1, 1 - (me?.fireCooldown || 0)));
+    ui['health-meter']?.style.setProperty('width', health + '%');
+    ui['reload-meter']?.style.setProperty('width', (ready * 100) + '%');
+    ui.arena?.classList.toggle('is-low-health', health > 0 && health <= 35);
+    ui.timer?.classList.toggle('is-urgent', state.phase === 'playing' && state.remaining <= 30);
+    text(ui['score-live'], '击毁 ' + (me?.kills || 0) + ' / 5');
+    for (const button of inputButtons) {
+      if (button.dataset.tankControl !== 'fire') continue;
+      button.style.setProperty('--reload', ready);
+      button.dataset.ready = String(ready >= .96);
+    }
     const host = session.playerId === state.hostId;
     const joined = state.players.filter(player => player.connected).length;
     ui.start.hidden = !host || state.phase !== 'lobby';
@@ -384,6 +398,8 @@
     lastSyncSent = 0;
     lastSentInput = false;
     feedbackUntil = 0;
+    noticeUntil = 0;
+    text(ui['combat-notice'], '');
     listSignature = '';
     overlaySignature = '';
     snapshots.length = 0;
@@ -405,20 +421,30 @@
 
   function sound(type) {
     if (muted || !audio || audio.state !== 'running') return;
-    const frequencies = { fire: 117, hit: 169, kill: 485, pickup: 636 };
-    const frequency = frequencies[type];
-    if (!frequency) return;
-    const start = audio.currentTime;
-    const oscillator = audio.createOscillator();
-    const gain = audio.createGain();
-    oscillator.type = type === 'fire' || type === 'hit' ? 'triangle' : 'sine';
-    oscillator.frequency.setValueAtTime(frequency, start);
-    oscillator.frequency.exponentialRampToValueAtTime(frequency * (type === 'fire' ? 0.52 : 1.28), start + 0.095);
-    gain.gain.setValueAtTime(0.045, start);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
-    oscillator.connect(gain).connect(audio.destination);
-    oscillator.start(start);
-    oscillator.stop(start + 0.13);
+    const notes = {
+      fire: [[155, 44, .14, 0, 'triangle', .07], [700, 160, .06, 0, 'square', .012]],
+      hit: [[340, 90, .09, 0, 'triangle', .05]],
+      hurt: [[120, 40, .22, 0, 'sawtooth', .035]],
+      kill: [[330, 440, .12, 0, 'triangle', .05], [550, 720, .18, .09, 'sine', .05]],
+      pickup: [[523, 523, .12, 0, 'sine', .035], [659, 659, .12, .07, 'sine', .035], [784, 784, .2, .14, 'sine', .035]],
+    }[type];
+    if (!notes) return;
+    try {
+      for (const [from, to, duration, delay, wave, volume] of notes) {
+        const start = audio.currentTime + delay;
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.type = wave;
+        oscillator.frequency.setValueAtTime(from, start);
+        oscillator.frequency.exponentialRampToValueAtTime(to, start + duration);
+        gain.gain.setValueAtTime(volume, start);
+        gain.gain.exponentialRampToValueAtTime(.001, start + duration);
+        oscillator.connect(gain).connect(audio.destination);
+        oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+        oscillator.start(start);
+        oscillator.stop(start + duration + .01);
+      }
+    } catch { /* Browser audio may be suspended while switching apps. */ }
   }
 
   function enableAudio() {
@@ -436,6 +462,13 @@
     feedbackUntil = performance.now() + 2200;
   }
 
+  function combatNotice(message, kind = 'hit') {
+    if (!ui['combat-notice']) return;
+    text(ui['combat-notice'], message);
+    ui['combat-notice'].dataset.kind = kind;
+    noticeUntil = performance.now() + (kind === 'kill' ? 1900 : 1100);
+  }
+
   function processEvents(next, initial) {
     const currentEvents = next.events || [];
     if (initial) {
@@ -447,17 +480,24 @@
     lastEvent = Math.max(...newEvents.map(event => event.id));
     const when = performance.now();
     effects.push(...newEvents.map(event => ({ ...event, when })));
-    if (effects.length > 28) effects.splice(0, effects.length - 28);
+    if (effects.length > 64) effects.splice(0, effects.length - 64);
 
     const local = next.players.find(player => player.id === session.playerId);
-    const ownEvent = newEvents.slice().reverse().find(event => event.text && (
-      event.playerId === session.playerId || (local && Math.hypot(event.x - local.x, event.y - local.y) < 42)
-    ));
+    const me = session.playerId;
+    const involved = event => event.playerId === me || event.sourceId === me || event.targetId === me;
+    const ownEvent = newEvents.slice().reverse().find(event => event.text && involved(event));
     if (ownEvent?.text) showFeedback(ownEvent.text);
-    const effect = newEvents.some(event => event.type === 'pickup') ? 'pickup'
-      : newEvents.some(event => event.type === 'kill') ? 'kill'
-      : newEvents.some(event => event.type === 'hit') ? 'hit' : '';
-    sound(effect);
+    const kill = newEvents.find(event => event.type === 'kill' && event.sourceId === me && event.targetId !== me);
+    const pickup = newEvents.find(event => event.type === 'pickup' && event.playerId === me);
+    const hurt = newEvents.find(event => event.type === 'hit' && event.targetId === me && !event.blocked);
+    const hit = newEvents.find(event => event.type === 'hit' && event.sourceId === me && event.targetId !== me);
+    if (kill) { combatNotice('击毁确认  +1', 'kill'); sound('kill'); }
+    else if (pickup) { combatNotice({heal:'生命补给',shield:'护盾上线',double:'双发装填',heavy:'重炮就绪'}[pickup.kind] || '获得补给', 'pickup'); sound('pickup'); }
+    else if (hurt) { combatNotice('装甲受损  −' + hurt.damage, 'hurt'); sound('hurt'); }
+    else if (hit) { combatNotice(hit.blocked ? '对手护盾抵挡' : '命中  −' + hit.damage); sound('hit'); }
+    const nearbyFire = newEvents.some(event => event.type === 'fire' && (event.playerId === me
+      || (local && Math.hypot(event.x - local.x, event.y - local.y) < 450)));
+    if (nearbyFire) sound('fire');
   }
 
   function applyState(next) {
@@ -471,6 +511,9 @@
       if (next.phase === 'countdown') {
         overview = false;
         effects.length = 0;
+        noticeUntil = feedbackUntil = 0;
+        text(ui['combat-notice'], '');
+        text(ui.feedback, '');
         if ((next.events || []).every(event => event.id < lastEvent)) lastEvent = 0;
       }
     }
@@ -545,6 +588,10 @@
       feedbackUntil = 0;
       text(ui.feedback, '');
     }
+    if (noticeUntil && now > noticeUntil) {
+      noticeUntil = 0;
+      text(ui['combat-notice'], '');
+    }
     requestAnimationFrame(renderFrame);
   }
 
@@ -589,9 +636,6 @@
         text(ui.status, '');
         requestAnimationFrame(resize);
       }
-      const previousShot = state?.players.find(player => player.id === current.playerId)?.fireCooldown || 0;
-      const nextShot = next?.players.find(player => player.id === current.playerId)?.fireCooldown || 0;
-      if (payload.fire && nextShot > previousShot + .3) sound('fire');
       applyState(next);
       if (resumed) setInvite();
       text(ui.connection, '连接正常');
@@ -876,6 +920,7 @@
   document.addEventListener('tank-install-close', renderControls);
   ui.sound?.addEventListener('click', () => {
     muted = !muted;
+    writeStorage(() => localStorage, muteKey, muted ? '1' : '0');
     ui.sound.setAttribute('aria-pressed', String(!muted));
     text(ui.sound, muted ? '声音关闭' : '声音开启');
     if (!muted) {
@@ -883,6 +928,8 @@
       sound('pickup');
     }
   });
+  ui.sound?.setAttribute('aria-pressed', String(!muted));
+  text(ui.sound, muted ? '声音关闭' : '声音开启');
 
   window.addEventListener('keydown', event => {
     const key = event.key.toLowerCase();
