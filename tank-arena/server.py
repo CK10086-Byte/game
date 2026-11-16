@@ -32,11 +32,13 @@ LOCAL_SUFFIXES = ('.localhost', '.local', '.internal', '.lan', '.test', '.invali
 PLAY_PAGES = {'gomoku': '/gomoku.html', 'frog-run': '/frog-run.html', 'tanks': '/tank-game.html'}
 TANK_ACTIONS = {'create', 'join', 'sync', 'start', 'rematch', 'leave'}
 TANK_SHARED_ASSETS = {'/game.html', '/game.js', '/game-examples.js', '/style.css', '/game.css'}
+TANK_PWA_ASSETS = {'/tank.webmanifest', '/mobile-install.js', '/games/tanks/sw.js'}
 TANK_ASSET = re.compile(r'/tank-[a-z0-9-]+\.(?:html|js|css|json|png|webp|svg|ogg|mp3|wav)')
 TANK_ROOM_RATE = 30
 TANK_RATE_WINDOW = 60
 CONTENT_TYPES = {'.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
-                 '.js': 'text/javascript; charset=utf-8', '.py': 'text/plain; charset=utf-8'}
+                 '.js': 'text/javascript; charset=utf-8', '.py': 'text/plain; charset=utf-8',
+                 '.webmanifest': 'application/manifest+json; charset=utf-8'}
 PAGE_POLICY = '; '.join((
     "default-src 'none'",
     "base-uri 'none'",
@@ -45,6 +47,8 @@ PAGE_POLICY = '; '.join((
     "img-src 'self' data:",
     "font-src 'self'",
     "connect-src 'self'",
+    "manifest-src 'self'",
+    "worker-src 'self'",
     "frame-ancestors 'none'",
     "form-action 'self'",
 ))
@@ -385,10 +389,12 @@ class LocalGameHandler(BaseHTTPRequestHandler):
     def serve_asset(self, path):
         self.require_method('GET', 'HEAD')
         if self.server.tank_only and path not in {'/', '/games/tanks', '/games/tanks/play'} and not (
-            path in TANK_SHARED_ASSETS or TANK_ASSET.fullmatch(path)
+            path in TANK_SHARED_ASSETS or path in TANK_PWA_ASSETS or TANK_ASSET.fullmatch(path)
         ):
             raise RequestError(404, '没有找到这个页面。')
-        if path == '/':
+        if path == '/games/tanks/sw.js':
+            path = '/tank-service-worker.js'
+        elif path == '/':
             path = '/tank-game.html' if self.server.tank_only else '/index.html'
         elif path.startswith('/games/'):
             segments = path.split('/')

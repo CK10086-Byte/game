@@ -7,7 +7,8 @@
     'map-grid', 'room-code', 'copy-invite', 'leave', 'start', 'rematch', 'player-list', 'scoreboard', 'timer',
     'map-name', 'phase', 'health', 'weapon', 'cooldown', 'connection', 'feedback', 'overlay', 'help-toggle',
     'help', 'help-close', 'sound', 'share-note', 'room-share-note', 'invite-text', 'view-toggle',
-    'arena', 'fullscreen', 'joystick', 'joystick-knob',
+    'arena', 'fullscreen', 'joystick', 'joystick-knob', 'room-back', 'resume', 'mobile-note',
+    'mobile-connection', 'install-help',
   ].map(id => [id, byId(id)]));
   const inputButtons = Array.from(document.querySelectorAll('[data-tank-control]'));
   const actions = ['forward', 'backward', 'left', 'right', 'fire'];
@@ -45,6 +46,9 @@
   let overview = false;
   let immersive = false;
   let fullscreenBusy = false;
+  const mobileQuery = window.matchMedia?.('(pointer: coarse), (max-width: 760px), (max-width: 1000px) and (max-height: 600px)');
+  let mobile = Boolean(mobileQuery?.matches);
+  document.body?.classList.toggle('tank-mobile', mobile);
   const joystick = { pointerId: null, x: 0, y: 0, strength: 0, bounds: null };
   let audio;
   let feedbackUntil = 0;
@@ -116,7 +120,10 @@
   }
 
   function messageFor(error) {
-    return error.status ? error.message : '暂时连不上本地服务。请确认启动窗口仍然打开。';
+    if (error.status) return error.message;
+    return config.scope === 'public' || window.location.href.startsWith('https:')
+      ? '暂时连不上游戏服务器，请检查网络后重试。首次打开可能需要等一会儿。'
+      : '暂时连不上本地服务。请确认启动窗口仍然打开。';
   }
 
   function actionPayload(current = session) {
@@ -128,7 +135,7 @@
   }
 
   function controlsAllowed() {
-    if (!session || state?.phase !== 'playing' || syncFailures || document.hidden || ui.help?.open) return false;
+    if (!session || state?.phase !== 'playing' || syncFailures || document.hidden || ui.help?.open || ui['install-help']?.open) return false;
     const me = state.players.find(player => player.id === session.playerId);
     return Boolean(me && me.hp > 0 && !me.respawnIn && me.connected);
   }
@@ -138,6 +145,10 @@
   }
 
   function renderViewButton() {
+    const inBattle = ['countdown', 'playing'].includes(state?.phase);
+    if (ui['room-back']) ui['room-back'].hidden = !mobile || !immersive;
+    if (ui.resume) ui.resume.hidden = !mobile || !inBattle || immersive;
+    if (ui['mobile-note']) ui['mobile-note'].hidden = !mobile || !inBattle || immersive;
     if (ui.fullscreen) {
       ui.fullscreen.disabled = !immersive && !['countdown', 'playing'].includes(state?.phase);
       ui.fullscreen.title = ui.fullscreen.disabled ? '开始对战后可进入全屏' : '全屏对战';
@@ -145,7 +156,7 @@
     if (!ui['view-toggle']) return;
     ui['view-toggle'].disabled = state?.phase !== 'playing';
     ui['view-toggle'].setAttribute('aria-pressed', String(overview));
-    text(ui['view-toggle'], overview ? '跟随坦克' : '查看全图');
+    text(ui['view-toggle'], overview ? (mobile ? '跟随' : '跟随坦克') : (mobile ? '全图' : '查看全图'));
     if (ui.stage) ui.stage.dataset.view = overview ? 'overview' : 'follow';
   }
 
@@ -214,6 +225,7 @@
 
   function renderControls() {
     const allowed = controlsAllowed();
+    text(ui['mobile-connection'], syncFailures ? '正在重连…' : '连接正常');
     ui.stage?.classList.toggle('can-control', allowed);
     ui.joystick?.setAttribute('aria-disabled', String(!allowed));
     for (const button of inputButtons) {
@@ -324,6 +336,7 @@
     ui.lobby.hidden = true;
     ui.room.dataset.phase = state.phase;
     ui.stage.dataset.phase = state.phase;
+    if (document.body) document.body.dataset.phase = state.phase;
     text(ui['room-code'], session.code);
     text(ui['map-name'], state.map?.name || '地图');
     text(ui.phase, phaseLabels[state.phase] || '房间');
@@ -379,6 +392,9 @@
     releaseInputs(false);
     ui.lobby.hidden = false;
     ui.room.hidden = true;
+    if (document.body) document.body.dataset.phase = 'lobby';
+    if (ui.resume) ui.resume.hidden = true;
+    if (ui['mobile-note']) ui['mobile-note'].hidden = true;
     ui.overlay.hidden = true;
     text(ui.feedback, '');
     text(ui.connection, '');
@@ -459,6 +475,13 @@
       }
     }
     state = next;
+    if (!previous) setInvite();
+    if (mobile) {
+      // Enter once per round. A player's manual return to the room survives polling.
+      const activeRound = phase => ['countdown', 'playing'].includes(phase);
+      if (activeRound(next.phase) && !activeRound(previous?.phase)) setImmersive(true);
+      else if (next.phase === 'finished' && previous?.phase !== 'finished' && immersive) exitFullscreen();
+    }
     const latest = snapshots.at(-1);
     if (!latest || latest.state.tick !== next.tick) snapshots.push({ state: next, time: performance.now() });
     else if (latest.state !== next) latest.state = next;
@@ -639,6 +662,7 @@
     overlaySignature = '';
     saveSession();
     applyState(data.state);
+    if (mobile && data.state.phase === 'lobby') ui.room.scrollIntoView?.({ block: 'start' });
     setInvite();
     text(ui.status, '');
     text(ui.connection, '连接正常');
@@ -838,11 +862,18 @@
   ui['map-select'].addEventListener('change', renderMapSelection);
   ui['view-toggle']?.addEventListener('click', toggleOverview);
   ui.fullscreen?.addEventListener('click', toggleFullscreen);
+  ui['room-back']?.addEventListener('click', async () => {
+    await exitFullscreen();
+    ui.room.scrollIntoView?.({ block: 'start' });
+  });
+  ui.resume?.addEventListener('click', toggleFullscreen);
   document.addEventListener('fullscreenchange', () => setImmersive(document.fullscreenElement === ui.arena));
   ui.code.addEventListener('input', () => { ui.code.value = ui.code.value.replace(/\D/g, '').slice(0, 6); });
   ui['help-toggle']?.addEventListener('click', () => { releaseInputs(); ui.help?.showModal(); });
   ui['help-close']?.addEventListener('click', () => ui.help?.close());
   ui.help?.addEventListener('close', renderControls);
+  document.addEventListener('tank-install-open', emergencyRelease);
+  document.addEventListener('tank-install-close', renderControls);
   ui.sound?.addEventListener('click', () => {
     muted = !muted;
     ui.sound.setAttribute('aria-pressed', String(!muted));
@@ -953,6 +984,16 @@
   });
   window.addEventListener('online', () => { if (session) queueSync(0); });
   window.addEventListener('resize', () => { emergencyRelease(); resize(); });
+  mobileQuery?.addEventListener?.('change', event => {
+    const previouslyMobile = mobile;
+    mobile = event.matches;
+    document.body?.classList.toggle('tank-mobile', mobile);
+    if (mobile && !previouslyMobile && ['countdown', 'playing'].includes(state?.phase)) setImmersive(true);
+    renderViewButton();
+    emergencyRelease();
+    resize();
+  });
+  window.visualViewport?.addEventListener('resize', () => { emergencyRelease(); resize(); });
   if (window.ResizeObserver && ui.stage) new ResizeObserver(resize).observe(ui.stage);
 
   renderer = window.createTankRenderer?.(ui.canvas);

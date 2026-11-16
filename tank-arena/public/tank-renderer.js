@@ -463,7 +463,7 @@
       const { map } = state;
       const theme = THEMES[map.season] || THEMES.classic;
       const ratio = pixelRatio;
-      const panelWidth = (cssWidth < 480 ? 116 : 162) * ratio;
+      const panelWidth = (cssWidth < 480 ? 100 : 162) * ratio;
       const padding = 7 * ratio;
       const labelHeight = 18 * ratio;
       const mapWidth = panelWidth - padding * 2;
@@ -543,7 +543,7 @@
       const current = (state.players || []).find(player => player.id === playerId);
       const follow = !preview && !overview && state.phase === "playing" && current;
       // Keep tanks readable on a phone; desktop view remains about 1200 × 760 world units.
-      const referenceWidth = cssWidth < 480 ? 780 : 1200;
+      const referenceWidth = cssWidth < 480 ? 560 : 1200;
       const followScale = Math.max(width / Math.min(map.width, referenceWidth), height / map.height);
       const scale = follow ? followScale : Math.min(width / map.width, height / map.height);
       if (!Number.isFinite(scale) || scale <= 0) return;

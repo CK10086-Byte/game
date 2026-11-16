@@ -4,10 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="description" content="和朋友一起玩迷宫坦克对战。创建六位房间码，驾驶坦克，用反弹子弹赢下比赛。">
+  <meta name="theme-color" content="#253b32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="坦克对战">
   <title>坦克对战 · 像素工坊</title>
+  <link rel="manifest" href="/tank.webmanifest">
+  <link rel="apple-touch-icon" href="/tank-icon-180.png">
+  <link rel="icon" type="image/png" href="/tank-icon-192.png">
   <link rel="stylesheet" href="/tank-game.css">
   <script src="/tank-renderer.js" defer></script>
   <script src="/tank-game.js" defer></script>
+  <script src="/mobile-install.js" defer></script>
 </head>
 <body>
   <header class="tank-topbar">
@@ -18,6 +26,7 @@
 
   <main class="tank-wrap">
     <section id="tank-lobby" aria-labelledby="lobby-heading">
+      <div id="tank-install-strip" class="install-strip"><div><span class="install-icon" aria-hidden="true">▰</span><p><strong>把战场装进口袋</strong><small>添加到桌面，下次一点就开战</small></p></div><button id="tank-install" type="button">添加到桌面 <span aria-hidden="true">＋</span></button></div>
       <div class="lobby-intro">
         <div class="lobby-copy"><p class="eyebrow"><span></span> 反弹，让对战多一点意外</p><h1 id="lobby-heading">一发入魂，<br><span>十次反弹。</span></h1><p class="hero-description">驾驶你的小坦克，绕过迷宫，算好弹道。<br>把房间码发给朋友，下一发会是谁的高光？</p><div class="rule-chips"><span><b>2–4</b> 人联机</span><span><b>1s</b> 开火间隔</span><span><b>9</b> 张地图</span></div><p class="lobby-hint"><span aria-hidden="true">✦</span> 先拿下 5 次击毁，或者在 3 分钟结束时领先。</p></div>
         <div class="join-card">
@@ -41,7 +50,8 @@
     </section>
 
     <section id="tank-room" hidden aria-label="坦克对战房间">
-      <div class="room-heading"><div><p class="eyebrow">准备好，就出发</p><h1>作战房间 <span id="tank-phase" class="phase-badge">等待玩家</span></h1></div><button id="tank-leave" type="button" class="button button-soft">离开房间 ↗</button></div>
+      <div class="room-heading"><div><p class="eyebrow">准备好，就出发</p><h1>作战房间 <span id="tank-phase" class="phase-badge">等待玩家</span></h1></div><div class="room-actions"><button id="tank-resume" type="button" class="button button-primary" hidden>返回战场 →</button><button id="tank-leave" type="button" class="button button-soft">离开房间 ↗</button></div></div>
+      <p id="tank-mobile-note" class="mobile-room-note" hidden>查看房间时对战仍在继续，点击「返回战场」继续驾驶。</p>
       <div class="room-layout">
         <aside class="room-sidebar">
           <section class="room-card invite-card"><h2>邀请队友</h2><p class="room-code-label">房间码</p><strong id="tank-room-code" class="room-code">------</strong><label class="sr-only" for="tank-invite-text">邀请链接</label><input id="tank-invite-text" readonly aria-label="邀请链接"><button id="tank-copy-invite" class="button button-primary" type="button">复制邀请链接与房间码</button><p id="tank-room-share-note" class="card-note">朋友打开同一个链接，输入房间码即可加入。</p></section>
@@ -50,9 +60,9 @@
         </aside>
         <div class="battle-column">
           <div id="tank-arena" class="arena-card">
-            <div class="arena-top"><div><span class="arena-mark" aria-hidden="true"></span><strong id="tank-map-name">正在载入地图</strong></div><span id="tank-timer" class="arena-timer">03:00</span><button id="tank-view-toggle" type="button" class="view-button" aria-pressed="false" aria-controls="tank-canvas" disabled>查看全图</button><button id="tank-fullscreen" type="button" class="view-button" aria-label="全屏对战" aria-pressed="false">全屏</button><button id="tank-sound" type="button" class="sound-button" aria-pressed="true">声音开</button></div>
+            <div class="arena-top"><button id="tank-room-back" type="button" class="view-button mobile-room-back" aria-label="查看房间与战绩" hidden>房间</button><div><span class="arena-mark" aria-hidden="true"></span><strong id="tank-map-name">正在载入地图</strong></div><span id="tank-timer" class="arena-timer">03:00</span><button id="tank-view-toggle" type="button" class="view-button" aria-pressed="false" aria-controls="tank-canvas" disabled>查看全图</button><button id="tank-fullscreen" type="button" class="view-button" aria-label="全屏对战" aria-pressed="false">全屏</button><button id="tank-sound" type="button" class="sound-button" aria-pressed="true">声音开</button></div>
             <div id="tank-stage" class="tank-stage"><canvas id="tank-canvas" width="1200" height="760" tabindex="0" aria-label="坦克对战场地">请使用支持 Canvas 的浏览器。</canvas><div id="tank-overlay" class="tank-overlay" hidden></div></div><div class="touch-controls" aria-label="触控驾驶"><div class="joystick-wrap"><div id="tank-joystick" class="joystick-pad" role="group" aria-label="移动摇杆，拖动控制坦克方向"><span class="joystick-arrows" aria-hidden="true">＋</span><span id="tank-joystick-knob" class="joystick-knob" aria-hidden="true"></span></div><span class="touch-label">拖动驾驶</span></div><button data-tank-control="fire" class="touch-fire" aria-label="开火" type="button">开火</button></div>
-            <div class="arena-bottom"><span><i class="health-dot"></i>生命 <strong id="tank-health">100</strong></span><span>武器 <strong id="tank-weapon">普通炮弹</strong></span><span>装填 <strong id="tank-cooldown">准备就绪</strong></span></div>
+            <div class="arena-bottom"><span><i class="health-dot"></i>生命 <strong id="tank-health">100</strong></span><span>武器 <strong id="tank-weapon">普通炮弹</strong></span><span>装填 <strong id="tank-cooldown">准备就绪</strong></span><span id="tank-mobile-connection" class="mobile-connection" role="status">连接正常</span></div>
           </div>
           <div class="battle-caption"><p><kbd>W</kbd><kbd>S</kbd> 前进 / 后退 <kbd>A</kbd><kbd>D</kbd> 转向 <kbd>空格</kbd> 开火 <kbd>M</kbd> 全图 / 跟随</p><span>小心！反弹的炮弹也会伤到自己。</span></div>
           <p id="tank-feedback" class="tank-feedback" aria-live="polite"></p>
@@ -61,6 +71,7 @@
     </section>
   </main>
   <footer class="tank-footer"><span>像素工坊 <i>/</i> 小游戏，大战术。</span><span>转个弯，再出发 <span aria-hidden="true">↗</span></span></footer>
+  <dialog id="tank-install-help" aria-labelledby="tank-install-title"><button id="tank-install-close" class="help-close" type="button" aria-label="关闭安装说明">×</button><p class="eyebrow">随时来一局</p><h2 id="tank-install-title">添加到桌面</h2><p id="tank-install-message" class="install-message"></p><p class="install-note">邀请朋友联机需要网络。桌面图标会打开同一个游戏，无需注册账号。</p></dialog>
 
   <dialog id="tank-help" aria-labelledby="help-title"><button id="tank-help-close" class="help-close" aria-label="关闭玩法说明" type="button">×</button><p class="eyebrow">QUICK GUIDE</p><h2 id="help-title">先看弹道，再扣扳机。</h2><dl class="help-rules"><div><dt>驾驶</dt><dd>W / ↑ 前进，S / ↓ 后退，A / ← 左转，D / → 右转。炮口跟随车身。</dd></div><div><dt>视野</dt><dd>战场面积已扩至原来的五倍。默认镜头跟随坦克，小地图可查看位置；按 M 或点击「查看全图」查看整张迷宫，再按一次返回跟随。</dd></div><div><dt>开火</dt><dd>按住空格每秒发射一次；子弹撞到墙或障碍反弹，第 10 次反弹后消失。升级武器也遵守 1 秒间隔。</dd></div><div><dt>胜负</dt><dd>2–4 人对战，先获得 5 次击毁获胜；3 分钟到时比较击毁数。坦克被击毁后 3 秒复活，并有 2 秒出生保护。</dd></div><div><dt>补给</dt><dd>医疗包恢复生命；双发和重型炮弹暂时强化武器；护盾抵挡伤害。补给在可通行的位置随机出现。</dd></div><div><dt>联机</dt><dd>房主创建房间，分享邀请链接及 6 位房间码；朋友无需注册账号。在等待开局时加入，由房主开始对战。</dd></div><div><dt>手机</dt><dd>拖动左侧圆形摇杆，坦克会朝该方向转向并前进；松手停止。右侧按住开火，可双指同时移动和射击。点击「全屏」进入全屏对战，横屏视野更大。</dd></div></dl></dialog>
 </body>

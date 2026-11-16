@@ -4,6 +4,13 @@ Python 标准库实现的 2–4 人实时坦克对战。无需账号、无需安
 
 本目录放在 [CK10086-Byte/game](https://github.com/CK10086-Byte/game) 仓库的 `tank-arena/` 子目录。
 
+## 手机游玩
+
+- 用手机浏览器打开游戏。进入对局后会自动切换到沉浸式战场，横屏和竖屏都可游玩。点「房间」可查看房间信息，点「返回战场」继续对局。 [打开公网游戏](https://pixel-tank-arena.onrender.com/games/tanks/play)
+- iPhone 或 iPad 用 Safari 打开游戏，点「分享」→「添加到主屏幕」→「添加」。
+- Android 用 Chrome 或 Edge 打开游戏，点游戏内安装按钮，或从浏览器菜单选择「安装应用」或「添加到主屏幕」。
+- 联机和单人训练都需要网络连接。
+
 ## 本地运行
 
 Python 3.9 或更新版本：

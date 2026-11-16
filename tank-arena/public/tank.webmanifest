@@ -1,0 +1,28 @@
+{
+  "id": "/games/tanks/play",
+  "name": "坦克对战 · 像素工坊",
+  "short_name": "坦克对战",
+  "description": "和朋友用六位房间码联机，驾驶坦克挑战九张迷宫地图。",
+  "lang": "zh-CN",
+  "start_url": "/games/tanks/play",
+  "scope": "/games/tanks",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7f6f1",
+  "theme_color": "#253b32",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/tank-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/tank-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
