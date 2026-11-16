@@ -669,10 +669,14 @@
       context.strokeStyle = "#657b59";
       context.lineWidth = ratio;
       context.strokeRect(mapX, mapY, mapWidth, mapHeight);
-      const viewX = mapX + view.x * miniScale;
-      const viewY = mapY + view.y * miniScale;
-      const viewWidth = view.width * miniScale;
-      const viewHeight = view.height * miniScale;
+      // Mobile cameras can show a small margin outside the arena. The radar only
+      // outlines the visible portion that actually intersects the playable map.
+      const visibleLeft = Math.max(0, view.x);
+      const visibleTop = Math.max(0, view.y);
+      const viewX = mapX + visibleLeft * miniScale;
+      const viewY = mapY + visibleTop * miniScale;
+      const viewWidth = Math.max(0, Math.min(map.width, view.x + view.width) - visibleLeft) * miniScale;
+      const viewHeight = Math.max(0, Math.min(map.height, view.y + view.height) - visibleTop) * miniScale;
       context.fillStyle = "#ffffff49";
       context.fillRect(viewX, viewY, viewWidth, viewHeight);
       context.strokeStyle = "#6d8561";
@@ -696,7 +700,7 @@
       if (awaitingSize && !measureCanvas()) return;
       const { map } = state;
       const { width, height } = canvas;
-      const { playerId, preview = false, overview = false, effects = [], time = 0 } = options;
+      const { playerId, preview = false, overview = false, mobileLandscape = false, effects = [], time = 0 } = options;
       const current = (state.players || []).find(player => player.id === playerId);
       const reducedMotion = Boolean(reducedMotionQuery?.matches);
       const ownDamage = latestEffect(effects, effect => effect.type === "hit" && (effect.targetId || effect.playerId) === playerId && !effect.blocked && effect.age < .45);
@@ -710,8 +714,12 @@
       if (follow) {
         // Input positions have already been interpolated by the controller. No second lagging
         // camera interpolation is needed, so respawns immediately show the new location.
-        view.x = Math.max(0, Math.min(map.width - view.width, current.x - view.width / 2));
-        view.y = Math.max(0, Math.min(map.height - view.height, current.y - view.height / 2));
+        // In phone landscape, keep corner spawns above/inward from the thumb
+        // controls. This changes camera bounds only, never scale or collisions.
+        const sideMargin = mobileLandscape ? 140 * pixelRatio / scale : 0;
+        const bottomMargin = mobileLandscape ? 136 * pixelRatio / scale : 0;
+        view.x = Math.max(-sideMargin, Math.min(map.width - view.width + sideMargin, current.x - view.width / 2));
+        view.y = Math.max(0, Math.min(map.height - view.height + bottomMargin, current.y - view.height / 2));
       }
       const offsetX = (width - view.width * scale) / 2 - view.x * scale;
       const offsetY = (height - view.height * scale) / 2 - view.y * scale;

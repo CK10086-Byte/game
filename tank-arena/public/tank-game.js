@@ -581,6 +581,7 @@
         playerId: session?.playerId,
         overview,
         time: now,
+        mobileLandscape: mobile && immersive && window.innerWidth > window.innerHeight && window.innerHeight <= 600,
         effects: effects.map(effect => ({ ...effect, age: (now - effect.when) / 650 })),
       });
     }
