@@ -137,6 +137,20 @@ input::placeholder { color: #aeb6a0; }
 .tank-player-row small, .player-meta { margin-left: auto; color: #949e87; font-size: 9px; }
 .tank-player-dot, .tank-score-dot, .player-dot, .score-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 .tank-score-row span:last-child { margin-left: auto; font: 11px ui-monospace, monospace; }
+.tank-player-row { flex-direction: column; align-items: stretch; gap: 6px; }
+.tank-player-summary { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.tank-player-summary .tank-player-name { min-width: 0; }
+.bot-row-controls, .bot-add-line { display: flex; align-items: center; gap: 7px; }
+.bot-row-difficulty, .bot-add-line select { flex: 1; width: 0; min-width: 0; min-height: 44px; padding: 7px 8px; border: 1px solid #cbd7b9; border-radius: 7px; background: #f4f7e9; color: #526944; font-size: 12px; }
+.bot-remove-button { flex-shrink: 0; min-width: 47px; min-height: 44px; padding: 8px; border: 1px solid #e2d3bc; border-radius: 7px; background: #f8eddd; color: #946744; font-size: 11px; }
+.bot-controls { margin: 3px 0 15px; padding-top: 13px; border-top: 1px dashed #d2ddc2; }
+.bot-controls > label { display: block; margin-bottom: 8px; font-size: 11px; font-weight: 750; color: #6a7e57; }
+.room-card .bot-add-button { flex: 0 0 auto; width: auto; min-height: 44px; padding: 8px 9px; color: #f1f5df; background: #627c4d; font-size: 11px; box-shadow: 0 2px 0 #455e34; }
+.bot-note, .bot-status { margin-top: 8px; font-size: 10px; line-height: 1.65; color: #8a977b; }
+.bot-status { color: #7b653f; }
+.bot-status:empty { display: none; }
+.bot-row-controls select:disabled { opacity: .6; }
+
 .scoreboard-labels { display: flex; justify-content: space-between; margin-top: 15px; font-size: 9px; color: #97a08b; }
 .battle-column { min-width: 0; }
 .arena-card { position: relative; overflow: hidden; border: 2px solid #2a3d2d; border-radius: 14px; background: #293c2e; box-shadow: 0 5px 0 #cbd5bd; }
@@ -258,6 +272,10 @@ dialog h2 { margin: 15px 0 24px; font-size: 26px; letter-spacing: -.6px; }
 .tank-mobile .hud-stat > span { font-size: 10px; }
 .tank-mobile .hud-stat strong { font-size: 11px; }
 .tank-mobile .arena-card { max-width: none; min-width: 0; }
+.tank-mobile .bot-row-difficulty, .tank-mobile .bot-add-line select { font-size: 16px; padding-inline: 5px; min-height: 44px; }
+.tank-mobile .bot-add-line { flex-wrap: wrap; }
+.tank-mobile .bot-add-line select { flex-basis: 100%; width: 100%; }
+.tank-mobile .room-card .bot-add-button { width: 100%; }
 .tank-mobile .tank-immersive .touch-controls { height: 166px; flex-shrink: 0; }
 .tank-mobile .tank-immersive .tank-stage { min-height: 0; }
 .tank-mobile .arena-top button { min-width: 44px; min-height: 44px; }

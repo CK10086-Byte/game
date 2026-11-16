@@ -9,6 +9,7 @@
     'help', 'help-close', 'sound', 'share-note', 'room-share-note', 'invite-text', 'view-toggle',
     'arena', 'fullscreen', 'joystick', 'joystick-knob', 'room-back', 'resume', 'mobile-note',
     'mobile-connection', 'install-help', 'health-meter', 'reload-meter', 'score-live', 'combat-notice',
+    'player-count', 'bot-controls', 'bot-difficulty', 'bot-add', 'bot-note', 'bot-status',
   ].map(id => [id, byId(id)]));
   const inputButtons = Array.from(document.querySelectorAll('[data-tank-control]'));
   const actions = ['forward', 'backward', 'left', 'right', 'fire'];
@@ -17,6 +18,9 @@
     ['a', 'left'], ['arrowleft', 'left'], ['d', 'right'], ['arrowright', 'right'], [' ', 'fire'],
   ]);
   const phaseLabels = { lobby: '等待开局', countdown: '即将开战', playing: '对战进行中', finished: '本局结束' };
+  const difficultyLabels = { easy: '简单', standard: '标准', hard: '困难' };
+  const playerViews = new Map();
+  let playerOrderSignature = '';
   const weaponLabels = { normal: '普通炮弹', double: '双发炮弹', heavy: '重型炮弹' };
   const roomCode = /^[0-9]{6}$/;
   const sessionKey = 'pixel-workshop-tanks-session';
@@ -256,25 +260,85 @@
     return dot;
   }
 
+  function canManageBots() {
+    return session && state && session.playerId === state.hostId
+      && ['lobby', 'finished'].includes(state.phase);
+  }
+
+  function renderBotControls() {
+    const host = session?.playerId === state?.hostId;
+    const count = state?.players.length || 0;
+    const canEdit = canManageBots();
+    text(ui['player-count'], count + ' / 4 席');
+    if (ui['bot-controls']) ui['bot-controls'].hidden = !host;
+    if (ui['bot-add']) ui['bot-add'].disabled = !canEdit || operation || count >= 4;
+    if (ui['bot-difficulty']) ui['bot-difficulty'].disabled = !canEdit || operation || count >= 4;
+    text(ui['bot-note'], !canEdit ? '对战开始后不能调整电脑，请在本局结束后修改。'
+      : count >= 4 ? '4 个席位已满，电脑也占用席位。请先空出一个席位。'
+      : '电脑占用玩家席位，真人与电脑合计最多 4 名。');
+  }
+
   function renderPlayers() {
     const players = state.players;
-    const key = JSON.stringify(players.map(p => [p.id, p.name, p.color, p.connected, p.bot, p.kills, p.deaths]
-      .concat(p.id === state.hostId)));
+    const host = session.playerId === state.hostId;
+    const key = JSON.stringify([state.phase, state.hostId, operation, players.map(p =>
+      [p.id, p.name, p.color, p.connected, p.bot, p.difficulty, p.kills, p.deaths])]);
     if (key === listSignature) return;
     listSignature = key;
     const rowTag = list => list.tagName === 'UL' || list.tagName === 'OL' ? 'li' : 'div';
+    const currentIds = new Set(players.map(player => player.id));
+    for (const id of playerViews.keys()) if (!currentIds.has(id)) playerViews.delete(id);
     const playerRows = players.map(player => {
-      const row = node(rowTag(ui['player-list']), 'tank-player-row');
+      let view = playerViews.get(player.id);
+      if (!view) {
+        const row = node(rowTag(ui['player-list']), 'tank-player-row');
+        row.dataset.playerId = player.id;
+        const summary = node('div', 'tank-player-summary');
+        const name = node('strong', 'tank-player-name');
+        const meta = node('small', 'player-meta');
+        summary.append(colorDot(player), name, meta);
+        row.append(summary);
+        view = { row, name, meta };
+        if (player.bot) {
+          const controls = node('div', 'bot-row-controls');
+          const select = node('select', 'bot-row-difficulty');
+          for (const [value, label] of Object.entries(difficultyLabels)) select.append(new Option(label, value));
+          const remove = node('button', 'bot-remove-button', '移除');
+          remove.type = 'button';
+          select.addEventListener('change', () => botAction('update', player.id, select.value));
+          remove.addEventListener('click', () => botAction('remove', player.id));
+          controls.append(select, remove);
+          row.append(controls);
+          Object.assign(view, { controls, select, remove });
+        }
+        playerViews.set(player.id, view);
+      }
       const flags = [];
       if (player.id === session.playerId) flags.push('你');
       if (player.id === state.hostId) flags.push('房主');
-      if (player.bot) flags.push('电脑');
+      if (player.bot) flags.push('电脑', difficultyLabels[player.difficulty] || '标准');
       if (!player.connected) flags.push('已掉线');
-      if (!player.connected) row.classList.add('is-disconnected');
-      row.append(colorDot(player), node('strong', 'tank-player-name', player.name));
-      if (flags.length) row.append(node('small', 'player-meta', flags.join(' · ')));
-      return row;
+      view.row.classList.toggle('is-disconnected', !player.connected);
+      text(view.name, player.name);
+      text(view.meta, flags.join(' · '));
+      if (view.controls) {
+        view.controls.hidden = !host;
+        view.select.disabled = !canManageBots() || operation;
+        view.remove.disabled = !canManageBots() || operation;
+        // Keep the same select node during polls, including while its native menu is open.
+        if (document.activeElement !== view.select || operation || !canManageBots()) {
+          view.select.value = player.difficulty in difficultyLabels ? player.difficulty : 'standard';
+        }
+        view.select.setAttribute('aria-label', player.name + ' 难度');
+        view.remove.setAttribute('aria-label', '移除 ' + player.name);
+      }
+      return view.row;
     });
+    const order = players.map(player => player.id).join('/');
+    if (order !== playerOrderSignature) {
+      playerOrderSignature = order;
+      ui['player-list'].replaceChildren(...playerRows);
+    }
     const scoreRows = [...players].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths).map(player => {
       const row = node(rowTag(ui.scoreboard), 'tank-score-row');
       if (player.id === session.playerId) row.classList.add('is-self');
@@ -282,8 +346,8 @@
         node('span', 'tank-score', player.kills + ' / ' + player.deaths));
       return row;
     });
-    ui['player-list'].replaceChildren(...playerRows);
     ui.scoreboard.replaceChildren(...scoreRows);
+    renderBotControls();
   }
 
   function formatTimer(seconds) {
@@ -297,10 +361,11 @@
     if (state.phase === 'lobby') {
       if (state.mode === 'practice') {
         title = '准备练习';
-        detail = '点击「开始对战」与电脑交手。';
+        detail = state.players.filter(player => player.connected).length >= 2
+          ? '点击「开始对战」与电脑交手，也可先调整电脑难度。' : '先添加一名电脑对手，即可开始练习。';
       } else if (state.players.filter(player => player.connected).length < 2) {
         title = '等待对手';
-        detail = '将房间码或链接发给好友，至少两人即可开战。';
+        detail = '邀请好友或添加电脑，至少两名坦克手即可开战。';
       } else if (session.playerId === state.hostId) {
         title = '人员已到齐';
         detail = '点击「开始对战」，或再邀请好友加入。';
@@ -364,7 +429,7 @@
     const host = session.playerId === state.hostId;
     const joined = state.players.filter(player => player.connected).length;
     ui.start.hidden = !host || state.phase !== 'lobby';
-    ui.start.disabled = operation || (state.mode !== 'practice' && joined < 2);
+    ui.start.disabled = operation || joined < 2;
     ui.rematch.hidden = !host || state.phase !== 'finished';
     ui.rematch.disabled = operation || joined < 2;
     ui.leave.disabled = operation;
@@ -401,6 +466,9 @@
     noticeUntil = 0;
     text(ui['combat-notice'], '');
     listSignature = '';
+    playerOrderSignature = '';
+    playerViews.clear();
+    text(ui['bot-status'], '');
     overlaySignature = '';
     snapshots.length = 0;
     effects.length = 0;
@@ -704,6 +772,9 @@
     snapshots.length = 0;
     effects.length = 0;
     listSignature = '';
+    playerOrderSignature = '';
+    playerViews.clear();
+    text(ui['bot-status'], '');
     overlaySignature = '';
     saveSession();
     applyState(data.state);
@@ -764,6 +835,32 @@
     }
   }
 
+  async function botAction(action, botId, difficulty) {
+    if (!canManageBots() || operation) return;
+    if (action === 'add' && state.players.length >= 4) return;
+    if (action !== 'add' && !state.players.some(player => player.id === botId && player.bot)) return;
+    const current = session;
+    const level = difficulty || ui['bot-difficulty']?.value || 'standard';
+    if (action !== 'remove' && !(level in difficultyLabels)) return;
+    const payload = { ...actionPayload(current), action };
+    if (action !== 'add') payload.botId = botId;
+    if (action !== 'remove') payload.difficulty = level;
+    setBusy(true);
+    text(ui['bot-status'], '正在调整电脑…');
+    try {
+      const result = await request('/api/tanks/bots', payload);
+      if (current !== session) return;
+      applyState(result.state);
+      text(ui['bot-status'], action === 'add' ? '已添加' + difficultyLabels[level] + '电脑。'
+        : action === 'remove' ? '已移除电脑，空出的席位可邀请朋友。' : '电脑难度已改为' + difficultyLabels[level] + '。');
+    } catch (error) {
+      if (current !== session) return;
+      text(ui['bot-status'], messageFor(error));
+    } finally {
+      if (current === session) setBusy(false);
+    }
+  }
+
   function inviteUrl(code) {
     const suggested = config.shareUrls?.[0];
     let base = new URL('/games/tanks/play', window.location.href);
@@ -786,7 +883,7 @@
     ui['invite-text'].hidden = practice;
     const noteTarget = ui['room-share-note'] || ui['share-note'];
     if (practice) {
-      text(noteTarget, '练习房间由电脑担任对手。');
+      text(noteTarget, '练习房间由电脑担任对手，可在玩家列表里调整难度或增减电脑。');
       return;
     }
     ui['invite-text'].value = inviteUrl(session.code);
@@ -900,6 +997,7 @@
       if (event.key === 'Enter') enterRoom('join');
     });
   }
+  ui['bot-add']?.addEventListener('click', () => botAction('add'));
   ui.start.addEventListener('click', () => { enableAudio(); roomAction('start'); });
   ui.rematch.addEventListener('click', () => { enableAudio(); roomAction('rematch'); });
   ui.leave.addEventListener('click', () => { releaseInputs(); roomAction('leave'); });

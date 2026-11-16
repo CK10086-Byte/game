@@ -107,7 +107,14 @@
       <div class="room-layout">
         <aside class="room-sidebar">
           <section class="room-card invite-card"><h2>邀请队友</h2><p class="room-code-label">房间码</p><strong id="tank-room-code" class="room-code">------</strong><label class="sr-only" for="tank-invite-text">邀请链接</label><input id="tank-invite-text" readonly aria-label="邀请链接"><button id="tank-copy-invite" class="button button-primary" type="button">复制邀请链接与房间码</button><p id="tank-room-share-note" class="card-note">朋友打开同一个链接，输入房间码即可加入。</p></section>
-          <section class="room-card"><div class="sidebar-heading"><h2>在场玩家</h2><span>最多 4 人</span></div><div id="tank-player-list" class="tank-player-list"></div><button id="tank-start" class="button button-dark" type="button">开始对战 →</button><button id="tank-rematch" class="button button-primary" type="button" hidden>再来一场 ↻</button></section>
+          <section class="room-card players-card"><div class="sidebar-heading"><h2>在场玩家</h2><span id="tank-player-count">0 / 4 席</span></div><div id="tank-player-list" class="tank-player-list"></div>
+            <div id="tank-bot-controls" class="bot-controls" hidden>
+              <label for="tank-bot-difficulty">添加电脑对手</label>
+              <div class="bot-add-line"><select id="tank-bot-difficulty" aria-describedby="tank-bot-note"><option value="easy">简单</option><option value="standard" selected>标准</option><option value="hard">困难</option></select><button id="tank-bot-add" class="button bot-add-button" type="button">添加电脑 ＋</button></div>
+              <p id="tank-bot-note" class="bot-note">电脑占用玩家席位，真人与电脑合计最多 4 名。</p>
+              <p id="tank-bot-status" class="bot-status" role="status"></p>
+            </div>
+            <button id="tank-start" class="button button-dark" type="button">开始对战 →</button><button id="tank-rematch" class="button button-primary" type="button" hidden>再来一场 ↻</button></section>
           <section class="room-card scoreboard-card"><h2>战绩榜</h2><div class="scoreboard-labels"><span>玩家</span><span>击毁 / 阵亡</span></div><div id="tank-scoreboard"></div></section>
         </aside>
         <div class="battle-column">
@@ -130,6 +137,6 @@
   <footer class="tank-footer"><span>像素工坊 <i>/</i> 小游戏，大战术。</span><span>转个弯，再出发 <span aria-hidden="true">↗</span></span></footer>
   <dialog id="tank-install-help" aria-labelledby="tank-install-title"><button id="tank-install-close" class="help-close" type="button" aria-label="关闭安装说明">×</button><p class="eyebrow">随时来一局</p><h2 id="tank-install-title">添加到桌面</h2><p id="tank-install-message" class="install-message"></p><p class="install-note">邀请朋友联机需要网络。桌面图标会打开同一个游戏，无需注册账号。</p></dialog>
 
-  <dialog id="tank-help" aria-labelledby="help-title"><button id="tank-help-close" class="help-close" aria-label="关闭玩法说明" type="button">×</button><p class="eyebrow">QUICK GUIDE</p><h2 id="help-title">先看弹道，再扣扳机。</h2><dl class="help-rules"><div><dt>驾驶</dt><dd>W / ↑ 前进，S / ↓ 后退，A / ← 左转，D / → 右转。炮口跟随车身。</dd></div><div><dt>视野</dt><dd>战场面积已扩至原来的五倍。默认镜头跟随坦克，小地图可查看位置；按 M 或点击「查看全图」查看整张迷宫，再按一次返回跟随。</dd></div><div><dt>开火</dt><dd>按住空格每秒发射一次；子弹撞到墙或障碍反弹，第 10 次反弹后消失。升级武器也遵守 1 秒间隔。</dd></div><div><dt>胜负</dt><dd>2–4 人对战，先获得 5 次击毁获胜；3 分钟到时比较击毁数。坦克被击毁后 3 秒复活，并有 2 秒出生保护。</dd></div><div><dt>补给</dt><dd>医疗包恢复生命；双发和重型炮弹暂时强化武器；护盾抵挡伤害。补给在可通行的位置随机出现。</dd></div><div><dt>联机</dt><dd>房主创建房间，分享邀请链接及 6 位房间码；朋友无需注册账号。在等待开局时加入，由房主开始对战。</dd></div><div><dt>手机</dt><dd>拖动左侧圆形摇杆，坦克会朝该方向转向并前进；松手停止。右侧按住开火，可双指同时移动和射击。点击「全屏」进入全屏对战，横屏视野更大。</dd></div></dl></dialog>
+  <dialog id="tank-help" aria-labelledby="help-title"><button id="tank-help-close" class="help-close" aria-label="关闭玩法说明" type="button">×</button><p class="eyebrow">QUICK GUIDE</p><h2 id="help-title">先看弹道，再扣扳机。</h2><dl class="help-rules"><div><dt>驾驶</dt><dd>W / ↑ 前进，S / ↓ 后退，A / ← 左转，D / → 右转。炮口跟随车身。</dd></div><div><dt>视野</dt><dd>战场面积已扩至原来的五倍。默认镜头跟随坦克，小地图可查看位置；按 M 或点击「查看全图」查看整张迷宫，再按一次返回跟随。</dd></div><div><dt>开火</dt><dd>按住空格每秒发射一次；子弹撞到墙或障碍反弹，第 10 次反弹后消失。升级武器也遵守 1 秒间隔。</dd></div><div><dt>胜负</dt><dd>2–4 人对战，先获得 5 次击毁获胜；3 分钟到时比较击毁数。坦克被击毁后 3 秒复活，并有 2 秒出生保护。</dd></div><div><dt>补给</dt><dd>医疗包恢复生命；双发和重型炮弹暂时强化武器；护盾抵挡伤害。补给在可通行的位置随机出现。</dd></div><div><dt>联机</dt><dd>房主创建房间，分享邀请链接及 6 位房间码；朋友无需注册账号。在等待开局时加入，由房主开始对战。房主也可添加简单、标准或困难电脑；真人和电脑合计最多 4 名，至少 2 名即可开战。电脑设置只能在等待开局或本局结束后调整。</dd></div><div><dt>手机</dt><dd>拖动左侧圆形摇杆，坦克会朝该方向转向并前进；松手停止。右侧按住开火，可双指同时移动和射击。点击「全屏」进入全屏对战，横屏视野更大。</dd></div></dl></dialog>
 </body>
 </html>

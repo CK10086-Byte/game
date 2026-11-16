@@ -30,7 +30,7 @@ PROJECT_ID = re.compile(r'(?:[0-9]{13}-)?[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[8
 DOMAIN = re.compile(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})')
 LOCAL_SUFFIXES = ('.localhost', '.local', '.internal', '.lan', '.test', '.invalid', '.example', '.onion', '.home.arpa')
 PLAY_PAGES = {'gomoku': '/gomoku.html', 'frog-run': '/frog-run.html', 'tanks': '/tank-game.html'}
-TANK_ACTIONS = {'create', 'join', 'sync', 'start', 'rematch', 'leave'}
+TANK_ACTIONS = {'create', 'join', 'sync', 'start', 'rematch', 'leave', 'bots'}
 TANK_SHARED_ASSETS = {'/game.html', '/game.js', '/game-examples.js', '/style.css', '/game.css'}
 TANK_PWA_ASSETS = {'/tank.webmanifest', '/mobile-install.js', '/games/tanks/sw.js'}
 TANK_ASSET = re.compile(r'/tank-[a-z0-9-]+\.(?:html|js|css|json|png|webp|svg|ogg|mp3|wav)')
@@ -380,7 +380,8 @@ class LocalGameHandler(BaseHTTPRequestHandler):
             self.send_json({'error': '创建或加入房间太频繁，请稍后再试。'}, 429, {'Retry-After': str(TANK_RATE_WINDOW)})
             return
         payload = self.read_json()
-        self.send_json(getattr(self.server.tanks, action)(payload))
+        handler = self.server.tanks.configure_bot if action == 'bots' else getattr(self.server.tanks, action)
+        self.send_json(handler(payload))
 
     def require_method(self, *methods):
         if self.command not in methods:

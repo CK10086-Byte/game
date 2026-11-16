@@ -28,6 +28,7 @@ EPSILON = 1e-7
 COLORS = ("#4f80d5", "#d26358", "#46a480", "#a27ac7")
 INPUT_KEYS = ("forward", "backward", "left", "right", "fire")
 PICKUPS = ("heal", "double", "heavy", "shield")
+BOT_DIFFICULTIES = ("easy", "standard", "hard")
 
 
 class TankError(Exception):
@@ -63,6 +64,10 @@ class Player:
     bot_turn: float = 0.0
     bot_heading: float = 0.0
     bot_path: list = field(default_factory=list)
+    difficulty: str = "standard"
+    bot_target_id: str = ""
+    bot_react_at: float = 0.0
+    bot_observation: tuple = ()
 
 
 @dataclass
@@ -256,13 +261,22 @@ class TankManager:
         if not room.host_id:
             room.host_id = player.id
 
-    def _add_player(self, room, name, bot=False):
+    def _add_player(self, room, name, bot=False, difficulty="standard"):
         colors = {player.color for player in room.players.values()}
         color = next(color for color in COLORS if color not in colors)
-        player = Player(secrets.token_hex(6), name, color, "" if bot else secrets.token_urlsafe(24), bot, seen=self.clock)
+        player = Player(secrets.token_hex(6), name, color, "" if bot else secrets.token_urlsafe(24), bot,
+                        seen=self.clock, difficulty=difficulty)
         self._spawn(room, player, initial=True)
         room.players[player.id] = player
         return player
+
+    def _add_bot(self, room, difficulty="standard"):
+        base = "练习坦克" if room.practice else "电脑坦克"
+        names = {player.name.casefold() for player in room.players.values()}
+        name, suffix = base, 2
+        while name.casefold() in names:
+            name, suffix = f"{base} {suffix}", suffix + 1
+        return self._add_player(room, name, bot=True, difficulty=difficulty)
 
     def _session(self, room, player):
         return {"code": room.code, "token": player.token, "playerId": player.id, "state": self._state(room)}
@@ -286,6 +300,8 @@ class TankManager:
             room = Room(code, game_map, practice, "")
             player = self._add_player(room, name)
             room.host_id = player.id
+            if practice:
+                self._add_bot(room)
             self.rooms[code] = room
             return self._session(room, player)
 
@@ -323,6 +339,43 @@ class TankManager:
                 player.inputs = inputs if room.phase == "playing" else (False,) * 5
             return {"state": self._state(room)}
 
+    def configure_bot(self, payload):
+        payload = self._payload(payload)
+        action = payload.get("action")
+        if not isinstance(action, str) or action not in {"add", "update", "remove"}:
+            raise TankError(400, "请选择添加、调整或移除电脑。")
+        difficulty = payload.get("difficulty", "standard" if action == "add" else None)
+        if action != "remove" and (not isinstance(difficulty, str) or difficulty not in BOT_DIFFICULTIES):
+            raise TankError(400, "电脑难度须为简单、标准或困难。")
+        bot_id = payload.get("botId")
+        if action != "add" and (not isinstance(bot_id, str) or not bot_id or len(bot_id) > 64):
+            raise TankError(400, "请选择要调整的电脑。")
+        with self.lock:
+            room = self._room(payload)
+            host = self._player(room, payload)
+            self._touch(room, host)
+            if host.id != room.host_id:
+                raise TankError(403, "只有房主可以管理电脑。")
+            if room.phase not in {"lobby", "finished"}:
+                raise TankError(409, "请在开局前或本局结束后调整电脑。")
+            if action == "add":
+                if len(room.players) >= 4:
+                    raise TankError(409, "房间已满，真人与电脑合计最多 4 位。")
+                self._add_bot(room, difficulty)
+            else:
+                bot = room.players.get(bot_id)
+                if bot is None or not bot.bot:
+                    raise TankError(400, "只能调整当前房间内的电脑。")
+                if action == "remove":
+                    del room.players[bot_id]
+                else:
+                    bot.difficulty = difficulty
+                    bot.bot_target_id = ""
+                    bot.bot_observation = ()
+                    bot.bot_path.clear()
+                    bot.bot_turn = 0
+            return {"state": self._state(room)}
+
     def _begin(self, payload, expected_phase):
         payload = self._payload(payload)
         with self.lock:
@@ -333,9 +386,6 @@ class TankManager:
                 raise TankError(403, "只有房主可以开始对局。")
             if room.phase != expected_phase:
                 raise TankError(409, "当前不能开始新一局。")
-            if room.practice and len(room.players) == 1:
-                bot_name = "练习坦克" if player.name != "练习坦克" else "训练对手"
-                self._add_player(room, bot_name, bot=True)
             if sum(other.connected for other in room.players.values()) < 2:
                 raise TankError(409, "至少需要两位在线玩家。")
             room.bullets.clear()
@@ -381,6 +431,7 @@ class TankManager:
                 "id": p.id, "name": p.name, "color": p.color, "x": round(p.x, 3), "y": round(p.y, 3),
                 "angle": round(p.angle, 5), "hp": p.hp, "kills": p.kills, "deaths": p.deaths,
                 "connected": p.connected, "bot": p.bot,
+                **({"difficulty": p.difficulty} if p.bot else {}),
                 "respawnIn": seconds(p.respawn_at), "shield": seconds(p.shield_until),
                 "weapon": p.weapon if p.weapon_until > self.clock else "normal",
                 "weaponRemaining": seconds(p.weapon_until), "fireCooldown": seconds(p.next_shot),
@@ -452,6 +503,9 @@ class TankManager:
         player.weapon_until = 0.0
         player.bot_path.clear()
         player.bot_turn = 0.0
+        player.bot_target_id = ""
+        player.bot_react_at = 0.0
+        player.bot_observation = ()
 
     def _maintain_room(self, room):
         expired = []
@@ -761,22 +815,79 @@ class TankManager:
                 heapq.heappush(frontier, (cost + heuristic, cost, adjacent))
         return []
 
+    @staticmethod
+    def _dodge_heading(room, player):
+        # Bound the extra hard-mode work even when a room has many bouncing projectiles.
+        nearby = sorted((bullet for bullet in room.bullets[-48:]
+                         if (bullet.owner_id != player.id or bullet.bounces)
+                         and math.hypot(bullet.x - player.x, bullet.y - player.y) < 300),
+                        key=lambda bullet: (bullet.x - player.x) ** 2 + (bullet.y - player.y) ** 2)[:12]
+        for bullet in nearby:
+            speed_squared = bullet.vx ** 2 + bullet.vy ** 2
+            if speed_squared <= EPSILON:
+                continue
+            rx, ry = player.x - bullet.x, player.y - bullet.y
+            eta = (rx * bullet.vx + ry * bullet.vy) / speed_squared
+            if not 0.04 < eta < 0.55 or math.hypot(rx - bullet.vx * eta, ry - bullet.vy * eta) > 38:
+                continue
+            if _wall_hit(room.map, bullet.x, bullet.y, bullet.vx * eta, bullet.vy * eta):
+                continue
+            perpendicular = math.atan2(bullet.vy, bullet.vx) + math.pi / 2
+            headings = (perpendicular, perpendicular + math.pi)
+            safe = [heading for heading in headings
+                    if _clear(room, player.x + 70 * math.cos(heading),
+                              player.y + 70 * math.sin(heading), player.id)
+                    and TankManager._drive_clear(room.map, player.x, player.y,
+                                                 player.x + 70 * math.cos(heading),
+                                                 player.y + 70 * math.sin(heading))]
+            if safe:
+                return min(safe, key=lambda heading: abs((heading - player.angle + math.pi) % math.tau - math.pi))
+        return None
+
     def _bot(self, room, player):
-        targets = [other for other in room.players.values() if not other.bot and other.connected and other.hp > 0]
+        targets = [other for other in room.players.values()
+                   if other.id != player.id and other.connected and other.hp > 0]
         if not targets:
             player.inputs = (False,) * 5
+            player.bot_target_id = ""
+            player.bot_observation = ()
             return
         target = min(targets, key=lambda other: (other.x - player.x) ** 2 + (other.y - player.y) ** 2)
+        difficulty = player.difficulty
+        if player.bot_target_id != target.id:
+            player.bot_target_id = target.id
+            player.bot_react_at = self.clock + (0.35 if difficulty == "easy" else 0)
+            player.bot_path.clear()
+            player.bot_turn = 0
+            player.bot_observation = ()
+        if self.clock + EPSILON < player.bot_react_at:
+            player.inputs = (False,) * 5
+            return
         dx, dy = target.x - player.x, target.y - player.y
         target_angle = math.atan2(dy, dx)
         visible = _wall_hit(room.map, player.x, player.y, dx, dy) is None
         direct = self._drive_clear(room.map, player.x, player.y, target.x, target.y)
+        aim_angle = target_angle
+        if difficulty == "easy":
+            # Smooth, bounded aim error creates misses without altering bullet physics.
+            aim_angle += .22 * math.sin(self.clock * 1.7 + sum(map(ord, player.id)) * .1)
+        elif difficulty == "hard" and visible and player.bot_observation:
+            old_id, old_x, old_y, old_time = player.bot_observation
+            elapsed = self.clock - old_time
+            if old_id == target.id and elapsed > EPSILON:
+                vx, vy = (target.x - old_x) / elapsed, (target.y - old_y) / elapsed
+                if math.hypot(vx, vy) <= SPEED * 1.1:
+                    lead = min(.4, math.hypot(dx, dy) / BULLET_SPEED * .65)
+                    aim_x, aim_y = target.x + vx * lead, target.y + vy * lead
+                    if _wall_hit(room.map, player.x, player.y, aim_x - player.x, aim_y - player.y) is None:
+                        aim_angle = math.atan2(aim_y - player.y, aim_x - player.x)
+        player.bot_observation = (target.id, target.x, target.y, self.clock)
         if direct:
-            heading = target_angle
+            heading = aim_angle
         else:
             if self.clock >= player.bot_turn:
                 player.bot_path = self._route(room.map, player.x, player.y, target.x, target.y)
-                player.bot_turn = self.clock + 0.8
+                player.bot_turn = self.clock + {"easy": 1.2, "standard": .8, "hard": .35}[difficulty]
                 if not player.bot_path:
                     # Keep local escape behavior for unusually narrow custom maps.
                     headings = [target_angle, player.angle - 0.85, player.angle + 0.85,
@@ -796,10 +907,13 @@ class TankManager:
                         break
             heading = player.bot_heading
         if visible and dx * dx + dy * dy <= 118 ** 2:
-            heading = target_angle
+            heading = aim_angle
+        dodge = self._dodge_heading(room, player) if difficulty == "hard" else None
+        if dodge is not None:
+            heading = dodge
         error = (heading - player.angle + math.pi) % math.tau - math.pi
-        forward = abs(error) < 0.78 and (not direct or dx * dx + dy * dy > 118 ** 2)
-        aim_error = (target_angle - player.angle + math.pi) % math.tau - math.pi
+        forward = abs(error) < 0.78 and (dodge is not None or not direct or dx * dx + dy * dy > 118 ** 2)
+        aim_error = (aim_angle - player.angle + math.pi) % math.tau - math.pi
         # Half a simulation turn step avoids stopping just short of a safe corner heading.
         turn_tolerance = TURN_RATE * TICK / 2
         player.inputs = (forward, False, error < -turn_tolerance, error > turn_tolerance,
